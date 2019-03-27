@@ -1,5 +1,6 @@
 #include <obs-module.h>
 #include <util/circlebuf.h>
+#include <fstream>
 
 #ifndef SEC_TO_NSEC
 #define SEC_TO_NSEC 1000000000ULL
@@ -152,6 +153,11 @@ static struct obs_source_frame *tsumaki_filter_video(void *data,
 		filter->video_delay_reached = false;
 		filter->reset_video = false;
 	}
+
+    {
+        std::ofstream file("/tmp/a.txt");
+        file << (int)frame->format;
+    }
 
 	filter->last_video_ts = frame->timestamp;
 
