@@ -12,7 +12,8 @@ endif()
 
 set(tsumaki_SOURCES
 	tsumaki-filter.cpp
-	tsumaki-plugin.cpp)
+	tsumaki-plugin.cpp
+    image-cvt.cpp)
 
 add_library(tsumaki MODULE
 	${tsumaki_SOURCES})

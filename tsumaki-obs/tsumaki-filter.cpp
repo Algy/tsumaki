@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <util/circlebuf.h>
 #include <fstream>
+#include "image-cvt.hpp"
 
 #ifndef SEC_TO_NSEC
 #define SEC_TO_NSEC 1000000000ULL
@@ -33,6 +34,64 @@ struct tsumaki_data {
 	bool                           reset_video;
 	bool                           reset_audio;
 };
+
+
+class OBSSourceFrameConvertable: public tsumaki::BaseVideoConvertable {
+    private:
+        struct obs_source_frame *frame;
+    public:
+        OBSSourceFrameConvertable(struct obs_source_frame *frame) : frame(frame) {};
+    public:
+        int get_width() { return frame->width; };
+        int get_height() { return frame->height; };
+        const float* get_color_matrix() { return frame->color_matrix; };
+        int get_line_size(int plane_index) { return frame->linesize[plane_index]; };
+        const uint8_t* get_plane(int plane_index) { return frame->data[plane_index]; };
+};
+
+std::unique_ptr<tsumaki::VideoFormatCvt>
+make_video_format_cvt(struct obs_source_frame *frame) {
+    std::shared_ptr<tsumaki::BaseVideoConvertable> convertable { new OBSSourceFrameConvertable(frame) };
+
+    tsumaki::VideoFormatCvt* result_ptr = nullptr;
+    switch (frame->format) {
+    case VIDEO_FORMAT_NONE:
+        result_ptr = new tsumaki::NoneFormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_I420:
+        result_ptr = new tsumaki::I420FormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_NV12:
+        result_ptr = new tsumaki::NV12FormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_YVYU:
+        result_ptr = new tsumaki::YVYUFormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_YUY2:
+        result_ptr = new tsumaki::YUY2FormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_UYVY:
+        result_ptr = new tsumaki::UYVYFormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_RGBA:
+        result_ptr = new tsumaki::RGBAFormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_BGRA:
+        result_ptr = new tsumaki::BGRAFormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_BGRX:
+        result_ptr = new tsumaki::BGRXFormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_Y800:
+        result_ptr = new tsumaki::Y800FormatCvt(convertable);
+        break;
+    case VIDEO_FORMAT_I444:
+        result_ptr = new tsumaki::I444FormatCvt(convertable);
+        break;
+    }
+    std::unique_ptr<tsumaki::VideoFormatCvt> result(result_ptr);
+    return result;
+}
 
 static const char *tsumaki_filter_name(void *unused)
 {
@@ -155,8 +214,17 @@ static struct obs_source_frame *tsumaki_filter_video(void *data,
 	}
 
     {
-        std::ofstream file("/tmp/a.txt");
-        file << (int)frame->format;
+        std::ofstream file("/tmp/frame_info.txt");
+        std::ofstream data_file("/tmp/frame.dat");
+        file << (int)frame->format << std::endl;
+        file << frame->linesize[0] << std::endl;
+        file << frame->width << " " << frame->height << std::endl;
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                file << frame->color_matrix[4 * i + j] << " ";
+            }
+            file << std::endl;
+        }
     }
 
 	filter->last_video_ts = frame->timestamp;
