@@ -46,10 +46,11 @@ namespace tsumaki {
         }
 
         void set_pixel(int i, int j, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-            data[width*4*i + 4*j + 0] = r;
-            data[width*4*i + 4*j + 1] = g;
-            data[width*4*i + 4*j + 2] = b;
-            data[width*4*i + 4*j + 3] = a;
+            int index = width*4*i + 4*j;
+            data[index] = r;
+            data[index + 1] = g;
+            data[index + 2] = b;
+            data[index + 3] = a;
         };
 
         static shared_ptr<ConvertedRGBAImage> make_black(int width, int height);

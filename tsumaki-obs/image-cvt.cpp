@@ -10,18 +10,18 @@ namespace tsumaki {
     }
 
     static inline void cvtcolor(const float *color_matrix, uint8_t *yuv, uint8_t *result) {
-        float y = (float)yuv[0] / 255, u = (float)yuv[1] / 255, v = (float)yuv[2] / 255;
+        float y = (float)yuv[0], u = (float)yuv[1], v = (float)yuv[2];
         // color_matrix is column major
-        float r = color_matrix[0] * y + color_matrix[1] * u + color_matrix[2]  * v + color_matrix[3]  * 1;
-        float g = color_matrix[4] * y + color_matrix[5] * u + color_matrix[6]  * v + color_matrix[7]  * 1;
-        float b = color_matrix[8] * y + color_matrix[9] * u + color_matrix[10] * v + color_matrix[11] * 1;
+        float r = color_matrix[0] * y + color_matrix[1] * u + color_matrix[2]  * v + color_matrix[3]  * 255;
+        float g = color_matrix[4] * y + color_matrix[5] * u + color_matrix[6]  * v + color_matrix[7]  * 255;
+        float b = color_matrix[8] * y + color_matrix[9] * u + color_matrix[10] * v + color_matrix[11] * 255;
 
-        r = clamp<float>(r, 0, 1);
-        g = clamp<float>(g, 0, 1);
-        b = clamp<float>(b, 0, 1);
-        result[0] = (uint8_t)(r * 255);
-        result[1] = (uint8_t)(g * 255);
-        result[2] = (uint8_t)(b * 255);
+        r = clamp<float>(r, 0, 255);
+        g = clamp<float>(g, 0, 255);
+        b = clamp<float>(b, 0, 255);
+        result[0] = r;
+        result[1] = g;
+        result[2] = b;
     }
 
     shared_ptr<ConvertedRGBAImage> ConvertedRGBAImage::make_black(int width, int height) {
