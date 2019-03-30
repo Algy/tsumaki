@@ -1,316 +1,125 @@
 #include <obs-module.h>
 #include <util/circlebuf.h>
 #include <fstream>
-#include "image-cvt.hpp"
-
-#ifndef SEC_TO_NSEC
-#define SEC_TO_NSEC 1000000000ULL
-#endif
-
-#ifndef MSEC_TO_NSEC
-#define MSEC_TO_NSEC 1000000ULL
-#endif
-
-#define SETTING_DELAY_MS               "delay_ms"
-
-#define TEXT_DELAY_MS                  obs_module_text("DelayMs")
-
-struct tsumaki_data {
-	obs_source_t                   *context;
-
-	/* contains struct obs_source_frame* */
-	struct circlebuf               video_frames;
-
-	/* stores the audio data */
-	struct circlebuf               audio_frames;
-	struct obs_audio_data          audio_output;
-
-	uint64_t                       last_video_ts;
-	uint64_t                       last_audio_ts;
-	uint64_t                       interval;
-	uint64_t                       samplerate;
-	bool                           video_delay_reached;
-	bool                           audio_delay_reached;
-	bool                           reset_video;
-	bool                           reset_audio;
-};
+#include <memory>
+#include "tsumaki-filter.hpp"
 
 
-class OBSSourceFrameConvertable: public tsumaki::BaseVideoConvertable {
-    private:
-        struct obs_source_frame *frame;
-    public:
-        OBSSourceFrameConvertable(struct obs_source_frame *frame) : frame(frame) {};
-    public:
-        int get_width() { return frame->width; };
-        int get_height() { return frame->height; };
-        const float* get_color_matrix() { return frame->color_matrix; };
-        int get_line_size(int plane_index) { return frame->linesize[plane_index]; };
-        const uint8_t* get_plane(int plane_index) { return frame->data[plane_index]; };
-};
-
-std::unique_ptr<tsumaki::VideoFormatCvt>
-make_video_format_cvt(struct obs_source_frame *frame) {
-    std::shared_ptr<tsumaki::BaseVideoConvertable> convertable { new OBSSourceFrameConvertable(frame) };
-
-    tsumaki::VideoFormatCvt* result_ptr = nullptr;
-    switch (frame->format) {
-    case VIDEO_FORMAT_NONE:
-        result_ptr = new tsumaki::NoneFormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_I420:
-        result_ptr = new tsumaki::I420FormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_NV12:
-        result_ptr = new tsumaki::NV12FormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_YVYU:
-        result_ptr = new tsumaki::YVYUFormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_YUY2:
-        result_ptr = new tsumaki::YUY2FormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_UYVY:
-        result_ptr = new tsumaki::UYVYFormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_RGBA:
-        result_ptr = new tsumaki::RGBAFormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_BGRA:
-        result_ptr = new tsumaki::BGRAFormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_BGRX:
-        result_ptr = new tsumaki::BGRXFormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_Y800:
-        result_ptr = new tsumaki::Y800FormatCvt(convertable);
-        break;
-    case VIDEO_FORMAT_I444:
-        result_ptr = new tsumaki::I444FormatCvt(convertable);
-        break;
-    }
-    std::unique_ptr<tsumaki::VideoFormatCvt> result(result_ptr);
-    return result;
-}
-
-static const char *tsumaki_filter_name(void *unused)
-{
-	UNUSED_PARAMETER(unused);
-	return obs_module_text("Tsumaki");
-}
-
-static void free_video_data(struct tsumaki_data *filter,
-		obs_source_t *parent)
-{
-	while (filter->video_frames.size) {
-		struct obs_source_frame *frame;
-
-		circlebuf_pop_front(&filter->video_frames, &frame,
-				sizeof(struct obs_source_frame*));
-		obs_source_release_frame(parent, frame);
-	}
-}
-
-static inline void free_audio_packet(struct obs_audio_data *audio)
-{
-	for (size_t i = 0; i < MAX_AV_PLANES; i++)
-		bfree(audio->data[i]);
-	memset(audio, 0, sizeof(*audio));
-}
-
-static void free_audio_data(struct tsumaki_data *filter)
-{
-	while (filter->audio_frames.size) {
-		struct obs_audio_data audio;
-
-		circlebuf_pop_front(&filter->audio_frames, &audio,
-				sizeof(struct obs_audio_data));
-		free_audio_packet(&audio);
-	}
-}
-
-static void tsumaki_filter_update(void *data, obs_data_t *settings)
-{
-	struct tsumaki_data *filter = (struct tsumaki_data *)data;
-	uint64_t new_interval = (uint64_t)obs_data_get_int(settings,
-			SETTING_DELAY_MS) * MSEC_TO_NSEC;
-
-	if (new_interval < filter->interval)
-		free_video_data(filter, obs_filter_get_parent(filter->context));
-
-	filter->reset_audio = true;
-	filter->reset_video = true;
-	filter->interval = new_interval;
-	filter->video_delay_reached = false;
-	filter->audio_delay_reached = false;
-}
-
-static void *tsumaki_filter_create(obs_data_t *settings,
-		obs_source_t *context)
-{
-	struct tsumaki_data *filter = (struct tsumaki_data *)bzalloc(sizeof(*filter));
-	struct obs_audio_info oai;
-
-	filter->context = context;
-	tsumaki_filter_update(filter, settings);
-
-	obs_get_audio_info(&oai);
-	filter->samplerate = oai.samples_per_sec;
-
-	return filter;
-}
-
-static void tsumaki_filter_destroy(void *data)
-{
-	struct tsumaki_data *filter = (struct tsumaki_data *)data;
-
-	free_audio_packet(&filter->audio_output);
-	circlebuf_free(&filter->video_frames);
-	circlebuf_free(&filter->audio_frames);
-	bfree(data);
-}
-
-static obs_properties_t *tsumaki_filter_properties(void *data)
-{
-	obs_properties_t *props = obs_properties_create();
-
-	obs_properties_add_int(props, SETTING_DELAY_MS, TEXT_DELAY_MS,
-			0, 20000, 1);
-
-	UNUSED_PARAMETER(data);
-	return props;
-}
-
-static void tsumaki_filter_remove(void *data, obs_source_t *parent)
-{
-	struct tsumaki_data *filter = (struct tsumaki_data *)data;
-
-	free_video_data(filter, parent);
-	free_audio_data(filter);
-}
-
-/* due to the fact that we need timing information to be consistent in order to
- * measure the current interval of data, if there is an unexpected hiccup or
- * jump with the timestamps, reset the cached delay data and start again to
- * ensure that the timing is consistent */
-static inline bool is_timestamp_jump(uint64_t ts, uint64_t prev_ts)
-{
-	return ts < prev_ts || (ts - prev_ts) > SEC_TO_NSEC;
-}
-
-static struct obs_source_frame *tsumaki_filter_video(void *data,
-		struct obs_source_frame *frame)
-{
-	struct tsumaki_data *filter = (struct tsumaki_data *)data;
-	obs_source_t *parent = obs_filter_get_parent(filter->context);
-	struct obs_source_frame *output;
-	uint64_t cur_interval;
-
-	if (filter->reset_video ||
-	    is_timestamp_jump(frame->timestamp, filter->last_video_ts)) {
-		free_video_data(filter, parent);
-		filter->video_delay_reached = false;
-		filter->reset_video = false;
-	}
-
-    {
-        std::ofstream file("/tmp/frame_info.txt");
-        std::ofstream data_file("/tmp/frame.dat");
-        file << (int)frame->format << std::endl;
-        file << frame->linesize[0] << std::endl;
-        file << frame->width << " " << frame->height << std::endl;
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                file << frame->color_matrix[4 * i + j] << " ";
-            }
-            file << std::endl;
+namespace tsumaki {
+    static unique_ptr<VideoFormatCvt>
+    make_video_format_cvt(const BaseVideoConvertable &convertable, struct obs_source_frame *frame) {
+        VideoFormatCvt *result_ptr = nullptr;
+        switch (frame->format) {
+        case VIDEO_FORMAT_NONE:
+            result_ptr = new NoneFormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_I420:
+            result_ptr = new I420FormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_NV12:
+            result_ptr = new NV12FormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_YVYU:
+            result_ptr = new YVYUFormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_YUY2:
+            result_ptr = new YUY2FormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_UYVY:
+            result_ptr = new UYVYFormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_RGBA:
+            result_ptr = new RGBAFormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_BGRA:
+            result_ptr = new BGRAFormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_BGRX:
+            result_ptr = new BGRXFormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_Y800:
+            result_ptr = new Y800FormatCvt(convertable);
+            break;
+        case VIDEO_FORMAT_I444:
+            result_ptr = new I444FormatCvt(convertable);
+            break;
+        default:
+            result_ptr = new NoneFormatCvt(convertable);
+            break;
         }
+        std::unique_ptr<VideoFormatCvt> result(result_ptr);
+        return result;
     }
 
-	filter->last_video_ts = frame->timestamp;
+    OBSFrame::OBSFrame(const OBSFrame &other) {
+        context = other.context;
+        frame = obs_source_frame_create(
+            other.frame->format,
+            other.frame->width,
+            other.frame->height
+        );
+        frame->timestamp = other.frame->timestamp;
+        obs_source_frame_copy(frame, other.frame);
+        frame->refs = 1;
+        image_cache = other.image_cache;
+    }
 
-	circlebuf_push_back(&filter->video_frames, &frame,
-			sizeof(struct obs_source_frame*));
-	circlebuf_peek_front(&filter->video_frames, &output,
-			sizeof(struct obs_source_frame*));
+    OBSFrame::OBSFrame(const Frame &other, struct obs_source_frame* reference_frame) {
+        frame = obs_source_frame_create(reference_frame->format, other.get_width(), other.get_height());
+        frame->timestamp = reference_frame->timestamp;
+        std::copy(reference_frame->color_matrix, reference_frame->color_matrix + 16, frame->color_matrix);
+        frame->full_range = reference_frame->full_range;
+        std::copy(reference_frame->color_range_min, reference_frame->color_range_min + 3, frame->color_range_min);
+        std::copy(reference_frame->color_range_max, reference_frame->color_range_max + 3, frame->color_range_max);
+        frame->flip = reference_frame->flip;
+        frame->refs = 1;
 
-	cur_interval = frame->timestamp - output->timestamp;
-	if (!filter->video_delay_reached && cur_interval < filter->interval)
-		return NULL;
+        // Copy frame
+        auto cvt = make_video_format_cvt(*this, reference_frame); 
+        cvt->inverse_convert(*other.get_rgba_image());
+    }
 
-	circlebuf_pop_front(&filter->video_frames, NULL,
-			sizeof(struct obs_source_frame*));
+    shared_ptr<ConvertedRGBAImage> OBSFrame::get_rgba_image() const {
+        if (image_cache != nullptr) {
+            return image_cache;
+        }
+        auto cvt = make_video_format_cvt(*this, frame);
+        image_cache = cvt->convert();
+        return image_cache;
+    }
 
-	if (!filter->video_delay_reached)
-		filter->video_delay_reached = true;
+    int OBSFrame::get_num_planes() const {
+        unique_ptr<VideoFormatCvt> cvt = make_video_format_cvt(*this, frame);
+        return cvt->get_num_planes();
+    }
 
-	return output;
-}
+    unique_ptr<OBSFrame> OBSFilter::wrap_obs_frame(struct obs_source_frame* frame) {
+        return unique_ptr<OBSFrame>(new OBSFrame(context, frame));
+    }
 
-/* NOTE: Delaying audio shouldn't be necessary because the audio subsystem will
- * automatically sync audio to video frames */
+    TsumakiFilter::TsumakiFilter() {
+    }
 
-/* #define DELAY_AUDIO */
+    TsumakiFilter::~TsumakiFilter() {
+    }
 
-#ifdef DELAY_AUDIO
-static struct obs_audio_data *tsumaki_filter_audio(void *data,
-		struct obs_audio_data *audio)
-{
-	struct tsumaki_data *filter = (struct tsumaki_data *)data;
-	struct obs_audio_data cached = *audio;
-	uint64_t cur_interval;
-	uint64_t duration;
-	uint64_t end_ts;
+    void TsumakiFilter::update_settings(obs_data_t *settings) {
+        this->interval = (uint64_t)obs_data_get_int(settings, "delay_ms") * 1000000ULL;
+    }
 
-	if (filter->reset_audio ||
-	    is_timestamp_jump(audio->timestamp, filter->last_audio_ts)) {
-		free_audio_data(filter);
-		filter->audio_delay_reached = false;
-		filter->reset_audio = false;
-	}
+    void TsumakiFilter::get_properties(obs_properties_t *props) {
+        obs_properties_add_int(props, "delay_ms", T("DelayMS"), 0, 20000, 1);
+    }
 
-	filter->last_audio_ts = audio->timestamp;
+    void TsumakiFilter::detach(obs_source_t *parent) { (void)parent; }
 
-	duration = (uint64_t)audio->frames * SEC_TO_NSEC / filter->samplerate;
-	end_ts = audio->timestamp + duration;
-
-	for (size_t i = 0; i < MAX_AV_PLANES; i++) {
-		if (!audio->data[i])
-			break;
-
-		cached.data[i] = bmemdup(audio->data[i],
-				audio->frames * sizeof(float));
-	}
-
-	free_audio_packet(&filter->audio_output);
-
-	circlebuf_push_back(&filter->audio_frames, &cached, sizeof(cached));
-	circlebuf_peek_front(&filter->audio_frames, &cached, sizeof(cached));
-
-	cur_interval = end_ts - cached.timestamp;
-	if (!filter->audio_delay_reached && cur_interval < filter->interval)
-		return NULL;
-
-	circlebuf_pop_front(&filter->audio_frames, NULL, sizeof(cached));
-	memcpy(&filter->audio_output, &cached, sizeof(cached));
-
-	if (!filter->audio_delay_reached)
-		filter->audio_delay_reached = true;
-
-	return &filter->audio_output;
-}
-#endif
-
-struct obs_source_info tsumaki_filter = {
-	.id                            = "tsumaki_filter",
-	.type                          = OBS_SOURCE_TYPE_FILTER,
-	.output_flags                  = OBS_SOURCE_VIDEO | OBS_SOURCE_ASYNC,
-	.get_name                      = tsumaki_filter_name,
-	.create                        = tsumaki_filter_create,
-	.destroy                       = tsumaki_filter_destroy,
-	.get_properties                = tsumaki_filter_properties,
-	.update                        = tsumaki_filter_update,
-	.filter_video                  = tsumaki_filter_video,
-	.filter_remove                 = tsumaki_filter_remove
+    unique_ptr<Frame> TsumakiFilter::frame_update(unique_ptr<Frame> frame) {
+        auto rgba = frame->get_rgba_image();
+        for (int i = 0; i < rgba->get_size(); i++) {
+            // rgba->data[i] = 255 - rgba->data[i];
+        }
+        unique_ptr<Frame> new_frame { new RGBAFrame(rgba) };
+        return new_frame;
+    }
 };
 

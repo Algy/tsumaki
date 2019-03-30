@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(tsumaki)
+project(tsumaki CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,6 +13,7 @@ endif()
 set(tsumaki_SOURCES
 	tsumaki-filter.cpp
 	tsumaki-plugin.cpp
+    tsumaki-math.cpp
     image-cvt.cpp)
 
 add_library(tsumaki MODULE
