@@ -19,13 +19,10 @@ https://github.com/JonathanCMitchell/mobilenet_v2_keras
     (https://arxiv.org/abs/1610.02357)
 - [Inverted Residuals and Linear Bottlenecks: Mobile Networks for
     Classification, Detection and Segmentation](https://arxiv.org/abs/1801.04381)
-"""
-
-'''
 Plaidml was only the keras backend that supports OpenCL and Windows in stable manner at the time I wrote tsumaki.
 So I ported the keras deeplab model, written by Emil Zakirov, to plaidml backend for wider use.
 The original LICENSE file is included alongside the code.
-'''
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -107,7 +104,7 @@ class BilinearUpsampling(Layer):
                 return K.tf.image.resize_bilinear(inputs, (self.output_size[0],
                                                            self.output_size[1]),
                                               align_corners=True)
-        elif backend_name == 'plaidml.keras.backend':
+        elif 'plaidml' in backend_name:
             # <function plaidml.keras.backend.resize_images(x, height_factor, width_factor, data_format, interpolation='nearest')>
             # inputs: [batch, height, width, channels]
             if os.environ.get('PLAIDML_USE_NEAREST'):
@@ -121,8 +118,7 @@ class BilinearUpsampling(Layer):
                         inputs, int(self.output_size[0] // inputs.shape.dims[1]), self.output_size[1] // inputs.shape.dims[2],
                         'channels_last', intp)
         else:
-            raise RuntimeError("Bilinear resize op is not supported by backend {}".format(backend))
-        resize_bilinear
+            raise RuntimeError("Bilinear resize op is not supported by backend {}".format(backend_name))
     def get_config(self):
         config = {'upsampling': self.upsampling,
                   'output_size': self.output_size,

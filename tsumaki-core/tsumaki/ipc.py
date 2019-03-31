@@ -199,14 +199,12 @@ class IPCApiServer:
                 try:
                     handler = self.handlers[type(frame)]
                 except KeyError:
-                    self.send_error(500, "Internal Server Error")
                     raise IPCApiServer(f"handler for {frame} not found")
                 response_frame = handler(self, frame)
                 self.transport.write_frame(response_frame, "response")
             except IPCTransportClosedError as exc:
                 raise
             except Exception as exc:
-                print(str(exc))
+                self.send_error(500, "Internal Server Error")
                 self.logger.exception("error raised on ipc hanlder")
-
 

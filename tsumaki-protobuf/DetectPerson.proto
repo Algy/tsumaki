@@ -1,13 +1,14 @@
 syntax = "proto3";
 
 import "RGBAImage.proto";
+import "MaskImage.proto";
 
 
 package tsumaki;
 
 message DetectPersonRequest {
     RGBAImage image = 1;
-    uint32 base_dimesion = 2;
+    uint32 base_dimension = 2;
     message NeuralParameter {
         string branch = 1;
         string name = 2;
@@ -18,7 +19,7 @@ message DetectPersonRequest {
 }
 
 message DetectPersonResponse {
-    RGBAImage mask = 1;
+    MaskImage mask = 1;
 }
 
 service DetectPersonService {
