@@ -3,6 +3,7 @@
 #include <fstream>
 #include <memory>
 #include "tsumaki-filter.hpp"
+#include "deps/xsocket.hpp"
 
 
 namespace tsumaki {
@@ -98,6 +99,7 @@ namespace tsumaki {
     }
 
     TsumakiFilter::TsumakiFilter() {
+        net::init(); // Initialize socket system (specifically for windows)
     }
 
     TsumakiFilter::~TsumakiFilter() {
