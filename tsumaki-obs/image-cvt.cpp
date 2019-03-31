@@ -1,12 +1,53 @@
 #include "image-cvt.hpp"
 #include "tsumaki-math.hpp"
 
+#define FAST_CVT_601(yuv, rgb) { \
+    int dy = (int)yuv[0] - 16, du = (int)yuv[1] - 128, dv = (int)yuv[2] - 128; \
+    int r = (298 * dy + 409 * dv + 128) >> 8; \
+    int g = (298 * dy + (-100) * du + (-208) * dv + 128) >> 8; \
+    int b = (298 * dy + 516 * du + 128) >> 8; \
+    rgb[0] = clamp<int>(r, 0, 255); \
+    rgb[1] = clamp<int>(g, 0, 255); \
+    rgb[2] = clamp<int>(b, 0, 255); \
+}
+
+#define FAST_CVT_709(yuv, rgb) { \
+    int dy = (int)yuv[0] - 16, du = (int)yuv[1] - 128, dv = (int)yuv[2] - 128; \
+    int r = (298 * dy + 459 * dv + 128) >> 8; \
+    int g = (298 * dy + (-55) * du + (-136) * dv + 128) >> 8; \
+    int b = (298 * dy + 541 * du + 128) >> 8; \
+    rgb[0] = clamp<int>(r, 0, 255); \
+    rgb[1] = clamp<int>(g, 0, 255); \
+    rgb[2] = clamp<int>(b, 0, 255); \
+}
+
+
+#define FAST_INV_CVT_601(rgb, yuv) { \
+    int r = rgb[0], g = rgb[1], b = rgb[2]; \
+    int y = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16; \
+    int u = ((-38 * r + -74 * g + 112 * b + 128) >> 8) + 128; \
+    int v = ((112 * r + -94 * g + -18 * b + 128) >> 8) + 128; \
+    yuv[0] = clamp<int>(y, 0, 255); \
+    yuv[1] = clamp<int>(u, 0, 255); \
+    yuv[2] = clamp<int>(v, 0, 255);\
+}
+
+#define FAST_INV_CVT_709(yuv, rgb) { \
+    int r = rgb[0], g = rgb[1], b = rgb[2]; \
+    int y = ((47 * r + 157 * g + 16 * b + 128) >> 8) + 16; \
+    int u = ((-26 * r + -87 * g + 112 * b + 128) >> 8) + 128; \
+    int v = ((112 * r + -102 * g + -10 * b + 128) >> 8) + 128; \
+    yuv[0] = clamp<int>(y, 0, 255); \
+    yuv[1] = clamp<int>(u, 0, 255); \
+    yuv[2] = clamp<int>(v, 0, 255);\
+}
+
+
+
 namespace tsumaki {
     template <typename T>
     static inline T clamp(T val, T lo, T hi) {
-        if (val < lo) return lo;
-        if (val > hi) return hi;
-        return val;
+        return (val < lo)? lo : ((val > hi)? hi : val);
     }
 
     static inline void cvtcolor(const float *color_matrix, uint8_t *yuv, uint8_t *result) {
@@ -61,6 +102,11 @@ namespace tsumaki {
         return result;
     }
 
+    void BaseVideoConvertable::get_inverse_color_matrix(float *inv_4by4) const {
+        inverse_4by4(get_color_matrix(), inv_4by4);
+    }
+
+
     void BaseRGBXFormatCvt::inverse_convert(const ConvertedRGBAImage& image) {
         int width = convertable.get_width();
         int height = convertable.get_height();
@@ -84,30 +130,56 @@ namespace tsumaki {
         }
     }
 
-    void BaseVideoConvertable::get_inverse_color_matrix(float *inv_4by4) const {
-        inverse_4by4(get_color_matrix(), inv_4by4);
-    }
-
     shared_ptr<ConvertedRGBAImage> I420FormatCvt::convert() {
         int width = convertable.get_width();
         int height = convertable.get_height();
         shared_ptr<ConvertedRGBAImage> result(new ConvertedRGBAImage(width, height));
         int y_line_size = convertable.get_line_size(0);
         int u_line_size = convertable.get_line_size(1);
-        int v_line_size = convertable.get_line_size(2);
 
-        const float *color_matrix = convertable.get_color_matrix();
         const uint8_t* planes[3] { convertable.get_plane(0), convertable.get_plane(1), convertable.get_plane(2) };
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                uint8_t yuv[3] {
-                    planes[0][y_line_size * i + j],
-                    planes[1][u_line_size * (i / 2) + j / 2],
-                    planes[2][v_line_size * (i / 2) + j / 2]
+        const uint8_t *y_plane = planes[0];
+
+        uint8_t *data = result->data;
+        #pragma omp parallel for
+        for (int i = 0; i < height / 2; i++) {
+            for (int j = 0; j < width / 2; j++) {
+                int chroma_index = u_line_size * i + j;
+                uint8_t subsampled_u = planes[1][chroma_index];
+                uint8_t subsampled_v = planes[2][chroma_index];
+
+                int y_base = y_line_size * 2 * i + 2 * j;
+                uint8_t yuv[4][3] = {
+                    { y_plane[y_base], subsampled_u, subsampled_v },
+                    { y_plane[y_base + 1] , subsampled_u, subsampled_v },
+                    { y_plane[y_base + y_line_size], subsampled_u, subsampled_v },
+                    { y_plane[y_base + y_line_size + 1], subsampled_u, subsampled_v }
                 };
-                uint8_t rgb[3];
-                cvtcolor(color_matrix, yuv, rgb);
-                result->set_pixel(i, j, rgb[0], rgb[1], rgb[2], 255);
+
+                uint8_t rgb[4][3];
+
+                FAST_CVT_601(yuv[0], rgb[0]);
+                FAST_CVT_601(yuv[1], rgb[1]);
+                FAST_CVT_601(yuv[2], rgb[2]);
+                FAST_CVT_601(yuv[3], rgb[3]);
+
+                int index = 4 * width * 2 * i + 4 * 2 * j;
+
+                data[index] = rgb[0][0];
+                data[index + 1] = rgb[0][1];
+                data[index + 2] = rgb[0][2];
+
+                data[index + 4] = rgb[1][0];
+                data[index + 5] = rgb[1][1];
+                data[index + 6] = rgb[1][2];
+
+                data[index + 4 * width] = rgb[2][0];
+                data[index + 4 * width + 1] = rgb[2][1];
+                data[index + 4 * width + 2] = rgb[2][2];
+
+                data[index + 4 * width + 4] = rgb[3][0];
+                data[index + 4 * width + 5] = rgb[3][1];
+                data[index + 4 * width + 6] = rgb[3][2];
             }
         }
         return result;
@@ -117,25 +189,42 @@ namespace tsumaki {
         int width = convertable.get_width();
         int height = convertable.get_height();
 
-        float inv_color_matrix[16];
-        convertable.get_inverse_color_matrix(inv_color_matrix);
-
         int y_line_size = convertable.get_line_size(0);
         int u_line_size = convertable.get_line_size(1);
-        int v_line_size = convertable.get_line_size(2);
 
         uint8_t *plane_0 = convertable.get_modifiable_plane(0);
         uint8_t *plane_1 = convertable.get_modifiable_plane(1);
         uint8_t *plane_2 = convertable.get_modifiable_plane(2);
 
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                uint8_t rgba[4], yuv[3];
-                image.get_pixel(i, j, rgba);
-                cvtcolor(inv_color_matrix, rgba, yuv);
-                plane_0[y_line_size * i + j] = yuv[0];
-                plane_1[u_line_size * (i / 2) + j / 2] = yuv[1];
-                plane_2[v_line_size * (i / 2) + j / 2] = yuv[2];
+        const uint8_t *data = image.data;
+        #pragma omp parallel for
+        for (int i = 0; i < height / 2; i++) {
+            for (int j = 0; j < width / 2; j++) {
+                int chroma_index = u_line_size * i + j;
+
+                int index = 4 * width * 2 * i + 4 * 2 * j;
+                uint8_t rgb[4][3] = {
+                    { data[index], data[index + 1], data[index + 2] },
+                    { data[index + 4], data[index + 5], data[index + 6] },
+                    { data[index + 4 * width], data[index + 4 * width + 1], data[index + 4 * width + 2] },
+                    { data[index + 4 * width + 4], data[index + 4 * width + 5], data[index + 4 * width + 6] }
+                };
+                uint8_t yuv[4][3];
+
+                int y_base = y_line_size * 2 * i + 2 * j;
+
+                FAST_INV_CVT_601(rgb[0], yuv[0]);
+                FAST_INV_CVT_601(rgb[1], yuv[1]);
+                FAST_INV_CVT_601(rgb[2], yuv[2]);
+                FAST_INV_CVT_601(rgb[3], yuv[3]);
+
+                plane_1[chroma_index] = yuv[0][1];
+                plane_2[chroma_index] = yuv[0][2];
+
+                plane_0[y_base] = yuv[0][0];
+                plane_0[y_base + 1] = yuv[1][0];
+                plane_0[y_base + y_line_size] = yuv[2][0];
+                plane_0[y_base + y_line_size + 1] = yuv[3][0];
             }
         }
     }
@@ -199,11 +288,13 @@ namespace tsumaki {
         int ui = get_u_position();
         int vi = get_v_position();
 
+        int packed_line_size = convertable.get_line_size(0);
         const uint8_t *plane = convertable.get_plane(0);
-        const float *color_matrix = convertable.get_color_matrix();
+        uint8_t *data = result->data;
+        #pragma omp parallel for
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width * 2; j += 4) {
-                const uint8_t *pixel_ptr = &plane[width*4*i + 4*j];
+                const uint8_t *pixel_ptr = &plane[packed_line_size*i + j];
                 uint8_t y1 = pixel_ptr[y1i];
                 uint8_t y2 = pixel_ptr[y2i];
                 uint8_t u = pixel_ptr[ui];
@@ -213,13 +304,18 @@ namespace tsumaki {
                 uint8_t yuv_2[3] { y2, u, v };
 
                 uint8_t rgb1[3], rgb2[3];
-                cvtcolor(color_matrix, yuv_1, rgb1);
-                cvtcolor(color_matrix, yuv_2, rgb2);
+                FAST_CVT_601(yuv_1, rgb1);
+                FAST_CVT_601(yuv_2, rgb2);
 
-
-                int data_j = j / 2;
-                result->set_pixel(i, data_j, rgb1[0], rgb1[1], rgb1[2], 255);
-                result->set_pixel(i, data_j + 1, rgb2[0], rgb2[1], rgb2[2], 255);
+                int index = width * 4 * i + 4 * (j / 2);
+                data[index] = rgb1[0];
+                data[index + 1] = rgb1[1];
+                data[index + 2] = rgb1[2];
+                data[index + 3] = 255;
+                data[index + 4] = rgb2[0];
+                data[index + 5] = rgb2[1];
+                data[index + 6] = rgb2[2];
+                data[index + 7] = 255;
             }
         }
         return result;
@@ -229,28 +325,36 @@ namespace tsumaki {
         int width = convertable.get_width();
         int height = convertable.get_height();
 
-        float inv_color_matrix[16];
-        convertable.get_inverse_color_matrix(inv_color_matrix);
-
         int y1i = get_first_y_position();
         int y2i = get_second_y_position();
         int ui = get_u_position();
         int vi = get_v_position();
 
-        uint8_t* plane = convertable.get_modifiable_plane(0);
+        int packed_line_size = convertable.get_line_size(0);
+        uint8_t *plane = convertable.get_modifiable_plane(0);
+        const uint8_t *data = image.data;
+        #pragma omp parallel for
         for (int i = 0; i < height; i++) {
-            int eff_width = (width / 2) * 2;
-            for (int j = 0; j < eff_width; j += 2) {
-                uint8_t rgba1[4], rgba2[4];
+            for (int j = 0; j < width; j += 2) {
+                int index = width * 4 * i + 4 * j;
+                uint8_t rgb1[3] = {
+                    data[index],
+                    data[index + 1],
+                    data[index + 2]
+                };
 
-                image.get_pixel(i, j, rgba1);
-                image.get_pixel(i, j+1, rgba2);
+                uint8_t rgb2[3] = {
+                    data[index + 4],
+                    data[index + 5],
+                    data[index + 6]
+                };
 
                 uint8_t yuv_1[3], yuv_2[3];
-                cvtcolor(inv_color_matrix, rgba1, yuv_1);
-                cvtcolor(inv_color_matrix, rgba2, yuv_2);
 
-                uint8_t *pixel_ptr = &plane[width*4*i + 4*j];
+                FAST_INV_CVT_601(rgb1, yuv_1);
+                FAST_INV_CVT_601(rgb2, yuv_2);
+
+                uint8_t *pixel_ptr = &plane[packed_line_size*i + j * 2];
                 pixel_ptr[y1i] = yuv_1[0];
                 pixel_ptr[y2i] = yuv_2[0];
                 pixel_ptr[ui] = yuv_2[1];

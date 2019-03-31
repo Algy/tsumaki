@@ -115,6 +115,7 @@ namespace tsumaki {
 
     unique_ptr<Frame> TsumakiFilter::frame_update(unique_ptr<Frame> frame) {
         auto rgba = frame->get_rgba_image();
+        // blog(LOG_INFO, "SIZE: %d", (int)rgba->get_size());
         for (int i = 0; i < rgba->get_size(); i++) {
             // rgba->data[i] = 255 - rgba->data[i];
         }

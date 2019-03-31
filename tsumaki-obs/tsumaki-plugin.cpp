@@ -63,8 +63,12 @@ struct obs_source_info tsumaki_filter = {
 	.filter_video = [] (void *data, struct obs_source_frame *obs_frame) {
         TsumakiFilter* filter = static_cast<TsumakiFilter *>(data);
 
-        // auto fn = [] { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); };
+        auto fn = [] { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); };
+
+        auto t1 = fn();
         struct obs_source_frame* filtered_obs_frame = do_filter(filter, obs_frame);
+        auto t2 = fn();
+        blog(LOG_INFO, "MS: %d", (int)(t2 - t1));
         return filtered_obs_frame;
     },
 	.filter_remove = [] (void *data, obs_source_t *parent) {
