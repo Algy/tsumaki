@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+import "RGBAImage.proto";
+
+
+package tsumaki;
+
+message DetectPersonRequest {
+    RGBAImage image = 1;
+    uint32 base_dimesion = 2;
+    message NeuralParameter {
+        string branch = 1;
+        string name = 2;
+        string version = 3;
+        uint32 dimension = 4;
+    }
+    NeuralParameter neural_param = 3;
+}
+
+message DetectPersonResponse {
+    RGBAImage mask = 1;
+}
+
+service DetectPersonService {
+    rpc DetectPerson (DetectPersonRequest) returns (DetectPersonResponse);
+}

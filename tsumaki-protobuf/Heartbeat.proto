@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package tsumaki;
+
+message HeartbeatRequest {
+    string hello = 1;
+}
+
+message HeartbeatResponse {
+    string hello = 1;
+}
+
+service HeartbeatService {
+    rpc Heartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+}

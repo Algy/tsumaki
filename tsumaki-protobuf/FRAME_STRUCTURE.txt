@@ -1,0 +1,14 @@
+Frame structure
+--------
+[17-byte header]
+"@(^o^)=@" (header signature 8 bytes)
+version (2-byte unsigned integer in little endian)
+frame_type (1-byte char, "Q" for request, "P" for response, "E" for error response)
+method (2-byte unsigned integer in little endian)
+body_length (4 bytes unsigned integer in little endian)
+----
+body (variable-length binary string. Details are defined in protobuf specs)
+---
+[8 byte trailer]
+"@=(^o^)@" (trailer signature 8 bytes)
+
