@@ -2,103 +2,87 @@
 #include <fstream>
 #include <string>
 #include <wstring>
+#include <sys/types.h>
+#include <signal.h>
+#include <vector>
 
 #include "ipc.hpp"
-#ifndef _WIN32
-// unix
-#define _GNU_SOURCE
-#include <dlfcn.h>
-
-#include <unistd.h>
-#else
-// windows
-#include <windows.h>
-#endif
-
 namespace tsumaki::ipc {
-    static std::string wide_string_to_string(std::wstring wstr)
-    {
-        if (wstr.empty())
-        {
-            return std::string();
-        }
-#if defined WIN32
-        int size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, &wstr[0], wstr.size(), NULL, 0, NULL, NULL);
-        std::string ret = std::string(size, 0);
-        WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, &wstr[0], wstr.size(), &ret[0], size, NULL, NULL);
-#else
-        size_t size = 0;
-        _locale_t lc = _create_locale(LC_ALL, "en_US.UTF-8");
-        errno_t err = _wcstombs_s_l(&size, NULL, 0, &wstr[0], _TRUNCATE, lc);
-        std::string ret = std::string(size, 0);
-        err = _wcstombs_s_l(&size, &ret[0], size, &wstr[0], _TRUNCATE, lc);
-        _free_locale(lc);
-        ret.resize(size - 1);
-#endif
-        return ret;
+    static std::string get_string () {
     }
 
+    const std::string pid_file_path = "/var/run/tsumaki.pid";
+    const std::string base_file_path = "/usr/local/share/tsumaki";
+    const std::string bin_version = "0.0.1";
 
-    void IPC::check_process() {
+    void IPC::init_ipc_system() {
+        net::init();
+    }
+
+    bool IPC::check_process() {
+        int pid_n = -1;
+        std::ifstream pid_file(pid_file_path);
+        if (pid_file.fail()) return false;
+        pid_file >> pid_n;
+        if (pid_n >= 1) {
+            pid_t pid = (pid_t)pid_n;
+            return kill(pid, 0) == 0;
+        }
+        return false;
     }
 
     bool IPC::spawn_process() {
-#ifndef _WIN32
-        int pid = fork();
+        pid_t pid = fork();
         if (pid < 0) {
+            perror("Failed to spawn a tsumaki process");
             return false;
         } else if (pid == 0) {
-            if (use_tcp) {
-                auto port_str = std::to_string(port);
-                execlp(
-                    "python", "-m", "tsumaki", "run",
-                    "--host", host.c_str(),
-                    "--port", port_str.c_str(),
-                    nullptr
-                );
+            std::string bin_path = base_file_path;
+            bin_path += '/';
+            bin_path += bin_version;
+            bin_path += "/bin/tsumaki";
+            std::vector<std::string> argv { bin_path, "run" };
+
+            if (ipc_type.use_tcp) {
+                auto port_str = std::to_string(ipc_type.port);
+                argv.push_back("--host");
+                argv.push_back(ipc_type.host);
+                argv.push_back("--port");
+                argv.push_back(std::to_string(ipc_type.port));
             } else {
-                execlp(
-                    "python", "-m", "tsumaki", "run",
-                    "--socket", unix_socket.c_str(),
-                    nullptr
-                );
+                argv.push_back("--socket");
+                argv.push_back(ipc_type.unix_socket);
             }
+
+            char **argvp = new char*[argv.size()];
+            for (int i = 0; i < argv.size(); i++) {
+                argvp[i] = argv[i].c_str();
+            }
+            execv(bin_path, argvp);
             perror("Failed to create process");
             exit(127);
-            // Unreachable
         } else {
             // parent
-            std::string path = wide_string_to_string(get_pid_file_name());
+            std::string path = "/var/run/tsumaki.pid";
             std::ofstream file(path);
             file << pid;
         }
         return true;
-#else
-        STARTUPINFO info={sizeof(info)};
-        PROCESS_INFORMATION processInfo;
-        if (CreateProcess(path, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
-        {
-                WaitForSingleObject(processInfo.hProcess, INFINITE);
-                CloseHandle(processInfo.hProcess);
-                CloseHandle(processInfo.hThread);
+    }
+
+    void terminate_process() {
+        int pid_n;
+        std::ifstream pid_file(pid_file_path);
+        if (pid_file.fail()) return;
+        pid_file >> pid_n;
+        if (pid_n >= 1) {
+            pid_t pid = (pid_t)pid_n;
+            kill(pid, SIGTERM);
         }
-        return true;
-#endif
     }
-
-    std::wstring get_pid_file_name() {
-#ifndef _WIN32
-        return L"/tmp/tsumaki.pid";
-#else
-        wchar_t buf[MAX_PATH + 1];
-        std::fill_n(buf, MAX_PATH, 0);
-        GetTempPathW(MAX_PATH, buf);
-
-        std::wstring path(buf);
-        path += L"\\tsumaki.pid";
-        return path;
-#endif
+    RPCResult request_sync(const ::google::protobuf::Message &message, std::function<void(RPCResult &result)> callback, int timeout = 0) {
+        RPCResult result;
+        return result;
     }
+}
 
-};
- 

@@ -4,10 +4,18 @@
 #include <string>
 #include <wstring>
 #include "protobuf/DetectPerson.pb.h"
+#include "deps/xsocket.hpp"
 
 namespace tsumaki::ipc {
+    class IPCType {
+        bool use_tcp;
+        std::string unix_socket;
+        std::string host;
+        int port;
+    };
+
     class IPCFailedError : std::exception {
-        std::exception::exception;
+        using std::exception::exception;
     };
 
     class RPCResult {
@@ -20,18 +28,24 @@ namespace tsumaki::ipc {
 
     class IPC {
     private:
-        bool use_tcp;
-        std::string unix_socket;
-        std::string host;
-        int port;
+        IPCType ipc_type;
+        net::socket socket;j
     public:
-        IPC(const std::string host = "localhost", int port = 1125) : host(host), port(port), use_tcp(true) {};
-        IPC(const std::string unix_socket = "/tmp/tsumaki.sock") : unix_socket(unix_socket), use_tcp(false) {};
+        static init_ipc_system();
+        IPC(const std::string host = "localhost", int port = 1125) : {
+            ipc_type.use_tcp = true;
+            ipc_type.host = host;
+            ipc_type.port = port;
+        };
+
+        IPC(const std::string unix_socket = "/tmp/tsumaki.sock") : {
+            ipc_type.use_tcp = false;
+            ipc_type.unix_socket = unix_socket;
+        };
+
         bool check_process();
-        std::wstring get_pid_file_name();
         bool spawn_process();
         void terminate_process();
-        void start_async_thread();
 
         RPCResult request_sync(
             const ::google::protobuf::Message &message,
