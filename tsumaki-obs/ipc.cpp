@@ -45,7 +45,7 @@ namespace tsumaki::ipc {
         std::string bin_path = base_file_path;
         bin_path += '/';
         bin_path += bin_version;
-        bin_path += "/bin/tsumaki";
+        bin_path += "/tsumaki";
 
         // now spawn a process
         pid_t pid = fork();
