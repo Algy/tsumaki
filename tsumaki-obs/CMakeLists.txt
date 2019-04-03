@@ -19,12 +19,17 @@ if (OPENMP_FOUND)
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
-file(GLOB tsumaki_PROTOBUF_SOURCES "protobuf/*.cpp")
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+include_directories(${PROTOBUF_INCLUDE_DIR})
+
+
 
 if(MSVC)
 	set(tsumaki_PLATFORM_DEPS
 		w32-pthreads)
 endif()
+
 
 set(tsumaki_SOURCES
 	tsumaki-filter.cpp
@@ -34,13 +39,23 @@ set(tsumaki_SOURCES
     ipc.cpp
     ipc-frame.cpp)
 
+set(tsumaki_PROTOBUF_SOURCES
+    protobuf/DetectPerson.pb.cc
+    protobuf/ErrorResponse.pb.cc
+    protobuf/Heartbeat.pb.cc
+    protobuf/MaskImage.pb.cc
+    protobuf/RGBAImage.pb.cc)
+
+
+
 add_library(tsumaki MODULE
 	${tsumaki_SOURCES}
     ${tsumaki_PROTOBUF_SOURCES}
 )
 target_link_libraries(tsumaki
 	libobs
-	${tsumaki_PLATFORM_DEPS})
+	${tsumaki_PLATFORM_DEPS}
+    ${PROTOBUF_LIBRARY})
 
 
 install_obs_plugin_with_data(tsumaki data)

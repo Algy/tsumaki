@@ -3,6 +3,7 @@
 #include <memory>
 #include <algorithm>
 #include "image-cvt.hpp"
+#include "ipc.hpp"
 
 using std::unique_ptr;
 using std::shared_ptr;
@@ -97,6 +98,7 @@ namespace tsumaki {
 
     class TsumakiFilter : public OBSFilter {
     private:
+        unique_ptr<ipc::IPC> curr_ipc;
         uint64_t interval;
     public:
         TsumakiFilter();

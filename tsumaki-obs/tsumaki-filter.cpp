@@ -3,7 +3,6 @@
 #include <fstream>
 #include <memory>
 #include "tsumaki-filter.hpp"
-#include "deps/xsocket.hpp"
 
 
 namespace tsumaki {
@@ -99,7 +98,12 @@ namespace tsumaki {
     }
 
     TsumakiFilter::TsumakiFilter() {
-        net::init(); // Initialize socket system (specifically for windows)
+        ipc::IPC::init_ipc_system();
+        curr_ipc = unique_ptr<ipc::IPC>(new ipc::IPC("127.0.0.1", 1125));
+
+        if (!curr_ipc->check_process()) {
+            curr_ipc->spawn_process();
+        }
     }
 
     TsumakiFilter::~TsumakiFilter() {

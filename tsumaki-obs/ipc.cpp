@@ -46,12 +46,6 @@ namespace tsumaki::ipc {
         bin_path += '/';
         bin_path += bin_version;
         bin_path += "/bin/tsumaki";
-        {
-            std::ifstream binfile("logs.txt");
-            if (binfile.fail()) {
-                return false;
-            }
-        }
 
         // now spawn a process
         pid_t pid = fork();
@@ -71,7 +65,7 @@ namespace tsumaki::ipc {
             }
             argvp[argv.size()] = nullptr;
             execv(bin_path.c_str(), (char**)argvp);
-            perror("Failed to create process");
+            perror("Failed to spawn a tsumaki process");
             delete [] argvp;
             exit(127);
         } else {
