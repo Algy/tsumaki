@@ -16,17 +16,18 @@ namespace tsumaki::ipc {
     };
 
     class IPC {
-    private:
+    protected:
         std::string host;
         int port;
+    private:
         IPCConnection base_conn;
     public:
         static void init_ipc_system();
         IPC(std::string host = "127.0.0.1", int port = 1125) : host(host), port(port), base_conn(host, port) {};
         virtual ~IPC();
-        bool check_process();
-        bool spawn_process();
-        void terminate_process();
+        virtual bool check_process() = 0;
+        virtual bool spawn_process() = 0;
+        virtual void terminate_process() = 0;
         RPCResult request_sync(std::shared_ptr<Message> message);
         void request_async(
             std::shared_ptr<Message> message,
@@ -36,4 +37,6 @@ namespace tsumaki::ipc {
     protected:
         IPCConnection generate_connection();
     };
+
+    const std::string bin_version = "0.0.1";
 };

@@ -7,6 +7,15 @@
 
 #include "protobuf/Heartbeat.pb.h"
 
+#ifndef _WIN32
+#include <unistd.h>
+#include "ipc_platforms/unix.hpp"
+using AvailableIPC = tsumaki::ipc::UnixIPC;
+#else
+#include "ipc_platforms/win32.hpp"
+using AvailableIPC = tsumaki::ipc::Win32IPC;
+#endif
+
 
 namespace tsumaki {
     static unique_ptr<VideoFormatCvt>
@@ -102,14 +111,25 @@ namespace tsumaki {
 
     TsumakiFilter::TsumakiFilter() {
         ipc::IPC::init_ipc_system();
-        curr_ipc = unique_ptr<ipc::IPC>(new ipc::IPC("127.0.0.1", 1125));
+        curr_ipc = unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
+
 
         if (!curr_ipc->check_process()) {
             curr_ipc->spawn_process();
         }
+
         try {
-            HeartbeatRequest req;
-            // curr_ipc->request_sync(make_shared<ipc::Message>(req.New()));
+            sleep(5);
+            std::shared_ptr<HeartbeatRequest> req { new HeartbeatRequest() };
+            req->set_hello("HELLO!");
+            auto result = curr_ipc->request_sync(req);
+            if (result.success) {
+                auto resp = static_cast<HeartbeatResponse*>(result.message.get());
+
+                blog(LOG_INFO, "[Tsumaki] Recv %s", resp->hello().c_str());
+            } else {
+                blog(LOG_INFO, "[Tsumaki] Error (%d) %s", result.error_code, result.error_message.c_str());
+            }
         } catch (ipc::IPCError &err) {
             blog(LOG_ERROR, "[Tsumaki] %s", err.what());
         }

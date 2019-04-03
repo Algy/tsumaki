@@ -1,4 +1,5 @@
 #include "ipc-connection.hpp"
+#include "ipc-error.hpp"
 
 namespace tsumaki::ipc {
     IPCConnection::~IPCConnection() {
@@ -7,7 +8,7 @@ namespace tsumaki::ipc {
 
     void IPCConnection::ensure_connection() {
         if (psocket == nullptr) {
-            psocket = new socket(net::af::inet, net::sock::stream);
+            psocket = std::unique_ptr<net::socket>(new net::socket(net::af::inet, net::sock::stream));
             if (psocket->connect(net::endpoint(host, port)) == -1) {
                 throw IPCConnectionError(std::strerror(errno));
             }
@@ -24,7 +25,7 @@ namespace tsumaki::ipc {
         const char *source = content.c_str();
 
         while (num_written < length) {
-            int num_to_write = std::min(block_size, length - num_written);
+            const int num_to_write = std::min(block_size, length - num_written);
             int wrt = psocket->send(source + num_written, num_to_write);
             if (wrt < 0) {
                 throw IPCConnectionClosedError(std::strerror(errno));
@@ -43,16 +44,16 @@ namespace tsumaki::ipc {
 
         std::unique_ptr<char> buffer{ new char[std::min(block_size, length)] };
         int num_read = 0;
-
         while (num_read < length) {
-            int num_to_read = std::min(block_size, length - num_read);
-            int rd = psocket->recv(buffer, num_to_read);
+            const int num_to_read = std::min(block_size, length - num_read);
+            int rd = psocket->recv(buffer.get(), num_to_read);
             if (rd < 0) {
+                throw IPCConnectionClosedError("Connection closed being interrupted: " + std::string(std::strerror(errno)));
             } else if (rd == 0) {
-                throw IPCConnectionClosedError("Connection unexpectedly closed. Expected" + std::to_string(length) + "bytes, got " + std::string(num_read));
+                throw IPCConnectionClosedError("Connection unexpectedly closed. Expected" + std::to_string(length) + "bytes, got " + std::to_string(num_read));
             }
-            result += (char *)buffer;
-            num_to_read += rd;
+            result.append(buffer.get(), rd);
+            num_read += rd;
         }
         return result;
     }

@@ -11,13 +11,13 @@ namespace tsumaki::ipc {
     static std::map<int, const IPCFrameSpec*> _method_to_spec;
     static std::map<std::string, const IPCFrameSpec*> _name_to_spec;
     static std::vector<IPCFrameSpec> frame_specs = {
-        IPCFrameSpec(0, "HeartbeatRequest", "HeartbeatResponse"),
-        IPCFrameSpec(1, "DetectPersonRequest", "DetectPersonResponse")
+        IPCFrameSpec(0, "tsumaki.HeartbeatRequest", "tsumaki.HeartbeatResponse"),
+        IPCFrameSpec(1, "tsumaki.DetectPersonRequest", "tsumaki.DetectPersonResponse")
     };
 
 
     static void init_cache() {
-        for (auto spec : frame_specs) {
+        for (const IPCFrameSpec& spec : frame_specs) {
             _method_to_spec[spec.method_number] = &spec;
             _name_to_spec[spec.req] = &spec;
             _name_to_spec[spec.resp] = &spec;

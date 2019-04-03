@@ -1,5 +1,6 @@
 #include <google/protobuf/message.h>
 #include <unordered_map>
+#include <iostream>
 #include "ipc-spec.hpp"
 #include "ipc-frame.hpp"
 
@@ -69,7 +70,9 @@ namespace tsumaki::ipc {
         std::string header_buf = header_sig;
         header_buf += s_u16_le(current_version);
         header_buf += frametype2char(frame.get_frame_type());
-        header_buf += s_u16_le(frame.get_method_number());
+
+        int method_number = frame.get_method_number();
+        header_buf += s_u16_le(method_number);
         header_buf += s_u32_le(body_buf.size());
 
         connection.write_all(header_buf);
@@ -89,6 +92,7 @@ namespace tsumaki::ipc {
             throw IPCFormatError("Version mismatch");
         }
         IPCFrame::Type frame_type = framechar2type(frame_type_c);
+
         std::string body_buf = connection.read_all(body_length);
         std::string trailer_buf = connection.read_all(8);
 

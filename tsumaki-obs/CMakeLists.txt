@@ -37,8 +37,17 @@ set(tsumaki_SOURCES
     tsumaki-math.cpp
     image-cvt.cpp
     ipc.cpp
+    ipc-connection.cpp
     ipc-frame.cpp
     ipc-spec.cpp)
+
+if(WIN32)
+    set(tsumaki_PLATFORM_SPECIFIC_SOURCES
+        ipc_platforms/win32.cpp)
+else()
+    set(tsumaki_PLATFORM_SPECIFIC_SOURCES
+        ipc_platforms/unix.cpp)
+endif()
 
 set(tsumaki_PROTOBUF_SOURCES
     protobuf/DetectPerson.pb.cc
@@ -51,6 +60,7 @@ set(tsumaki_PROTOBUF_SOURCES
 
 add_library(tsumaki MODULE
 	${tsumaki_SOURCES}
+    ${tsumaki_PLATFORM_SPECIFIC_SOURCES}
     ${tsumaki_PROTOBUF_SOURCES}
 )
 target_link_libraries(tsumaki
