@@ -7,11 +7,15 @@ verify_ssl = true
 pytest = "*"
 hypothesis = "*"
 pillow = "*"
+pyinstaller = "*"
 
 [packages]
+numpy = "*"
+six = "*"
 keras = "*"
-plaidml = "*"
+plaidml-keras = "*"
 click = "*"
+protobuf = "*"
 
 [requires]
 python_version = "3.7"
