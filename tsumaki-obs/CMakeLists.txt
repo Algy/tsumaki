@@ -31,7 +31,8 @@ set(tsumaki_SOURCES
 	tsumaki-plugin.cpp
     tsumaki-math.cpp
     image-cvt.cpp
-    ipc.cpp)
+    ipc.cpp
+    ipc-frame.cpp)
 
 add_library(tsumaki MODULE
 	${tsumaki_SOURCES}

@@ -1,17 +1,23 @@
+#pragma once
 #include <functional>
 #include <vector>
 #include <string>
 #include <memory>
 #include <map>
 
+#include "protobuf/Heartbeat.pb.h"
+#include "protobuf/DetectPerson.pb.h"
+
 namespace tsumaki::ipc {
-    std::map<int, const IPCFrameSpec*> _method_to_spec;
-    std::map<std::string, const IPCFrameSpec*> _name_to_spec;
     struct IPCFrameSpec {
         const int method_number;
         const std::string req;
         const std::string resp;
-    }
+        IPCFrameSpec(int method_number, std::string req, std::string resp) : method_number(method_number), req(req), resp(resp) {};
+    };
+
+    std::map<int, const IPCFrameSpec*> _method_to_spec;
+    std::map<std::string, const IPCFrameSpec*> _name_to_spec;
 
     std::vector<IPCFrameSpec> frame_specs = {
         IPCFrameSpec(0, "HeartbeatRequest", "HeartbeatResponse"),

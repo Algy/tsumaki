@@ -9,6 +9,7 @@
 #include <vector>
 #include <thread>
 #include "ipc.hpp"
+#include "protobuf/ErrorResponse.pb.h"
 
 namespace tsumaki::ipc {
     const std::string pid_file_path = "/var/run/tsumaki.pid";
@@ -25,6 +26,7 @@ namespace tsumaki::ipc {
     void IPC::init_ipc_system() {
         net::init();
         signal(SIGPIPE, SIG_IGN);
+        IPCFrameChannel::init_frame_channel();
     }
 
     bool IPC::check_process() {
@@ -58,23 +60,17 @@ namespace tsumaki::ipc {
             return false;
         } else if (pid == 0) {
             std::vector<std::string> argv { bin_path, "run" };
+            argv.push_back("--host");
+            argv.push_back(host);
+            argv.push_back("--port");
+            argv.push_back(std::to_string(port));
 
-            if (ipc_type.use_tcp) {
-                auto port_str = std::to_string(ipc_type.port);
-                argv.push_back("--host");
-                argv.push_back(ipc_type.host);
-                argv.push_back("--port");
-                argv.push_back(std::to_string(ipc_type.port));
-            } else {
-                argv.push_back("--socket");
-                argv.push_back(ipc_type.unix_socket);
-            }
-
-            char **argvp = new char*[argv.size()];
-            for (int i = 0; i < argv.size(); i++) {
+            const char **argvp = new const char*[argv.size() + 1];
+            for (std::size_t i = 0; i < argv.size(); i++) {
                 argvp[i] = argv[i].c_str();
             }
-            execv(bin_path, argvp);
+            argvp[argv.size()] = nullptr;
+            execv(bin_path.c_str(), (char**)argvp);
             perror("Failed to create process");
             delete [] argvp;
             exit(127);
@@ -94,40 +90,40 @@ namespace tsumaki::ipc {
         if (pid_n >= 1) {
             pid_t pid = (pid_t)pid_n;
             kill(pid, SIGTERM);
-            std::remove(pid_file_path);
+            std::remove(pid_file_path.c_str());
         }
     }
 
 
-    static RPCResult do_request(IPCConnection &conn, const Message &message) {
+    static RPCResult do_request(IPCConnection &conn, std::shared_ptr<Message> message) {
         conn.ensure_connection();
         IPCFrameChannel channel(conn);
 
-        IPCFrame request_frame(IPCFrame::RequestType, &message);
+        IPCFrame request_frame(IPCFrame::RequestType, message);
         channel.send(request_frame);
         IPCFrame resp_frame = channel.receive();
 
         RPCResult result;
         if (resp_frame.is_error()) {
-            ErrorResponse& message = static_cast<ErrorResponse&>(resp_frame.get_message());
+            ErrorResponse& err_message = static_cast<ErrorResponse&>(*resp_frame.get_message());
             result.success = false;
-            result.error_code = message.code;
-            result.error_message = message.msg;
+            result.error_code = err_message.code();
+            result.error_message = err_message.msg();
         } else {
             result.success = true;
-            result.message = resp_frame.message;
+            result.message = resp_frame.get_message();
         }
         return result;
     }
 
-    static RPCResult request_sync(const Message &connection) {
-        return request(base_conn, message);
+    RPCResult IPC::request_sync(std::shared_ptr<Message> message) {
+        return do_request(base_conn, message);
     }
 
-    void request_async(
+    void IPC::request_async(
             std::shared_ptr<Message> message,
             std::function<void(RPCResult &result)> callback,
-            std::function<void(IPCError &exc)> error = nullptr) {
+            std::function<void(IPCError &exc)> error) {
         std::shared_ptr<IPCConnection> conn { new IPCConnection(generate_connection()) };
         std::thread([conn, message, callback, error]() {
             try {

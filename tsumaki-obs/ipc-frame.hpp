@@ -1,8 +1,10 @@
+#pragma once
 #include <memory>
 #include <cstdint>
 #include <string>
 
 #include "ipc-error.hpp"
+#include "ipc-connection.hpp"
 
 namespace tsumaki::ipc {
     using Message = ::google::protobuf::Message;
@@ -13,7 +15,7 @@ namespace tsumaki::ipc {
             ResponseType,
             ErrorType
         };
-    proetected:
+    protected:
         Type frame_type;
         std::shared_ptr<Message> message;
     public:
@@ -30,7 +32,7 @@ namespace tsumaki::ipc {
     private:
         IPCConnection &connection;
     public:
-        static void init_frame_mapper();
+        static void init_frame_channel();
         IPCFrameChannel(IPCConnection &connection) : connection(connection) {};
     public:
         void send(const IPCFrame &frame);

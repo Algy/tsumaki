@@ -1,3 +1,4 @@
+#pragma once
 #include <obs-module.h>
 #include <memory>
 #include <algorithm>

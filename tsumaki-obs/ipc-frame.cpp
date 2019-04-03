@@ -7,15 +7,6 @@ namespace tsumaki::ipc {
     const std::string trailer_sig = "@=(^o^)@";
     const int current_version = 1;
    
-method (2-byte unsigned integer in little endian)
-body_length (4 bytes unsigned integer in little endian)
-----
-body (variable-length binary string. Details are defined in protobuf specs)
----
-[8 byte trailer]
-"@=(^o^)@" (trailer signature 8 bytes)
-
-
     static char frametype2char(IPCFrame::Type type) {
         switch (type) {
             case IPCFrame::RequestType:
@@ -35,7 +26,7 @@ body (variable-length binary string. Details are defined in protobuf specs)
     }
 
     static int16_t p_u16_le(const std::string &s, int pos) {
-        return ((uint8_t)s[pos + 1] << 16) + (uint8_t)s[pos]
+        return ((uint8_t)s[pos + 1] << 8) + (uint8_t)s[pos];
     }
 
     static std::string s_u32_le(uint32_t num) {
@@ -49,7 +40,7 @@ body (variable-length binary string. Details are defined in protobuf specs)
     }
 
     static uint32_t p_u32_le(const std::string &s, int pos) {
-        return ((uint8_t)s[3] << 24) + ((uint8_t)s[2] << 16) + ((uint8_t)s[1] << 8) + (uint8_t)s[0];
+        return ((uint8_t)s[pos + 3] << 24) + ((uint8_t)s[pos + 2] << 16) + ((uint8_t)s[pos + 1] << 8) + (uint8_t)s[pos];
     }
 
     static IPCFrame::Type framechar2type(char c) {
@@ -61,7 +52,11 @@ body (variable-length binary string. Details are defined in protobuf specs)
             case 'E':
                 return IPCFrame::ErrorType;
             default:
-                throw IPCFormatError(std::string("Unexpected frame type ") + c);
+                {
+                    std::string err = "Unexpected frame type ";
+                    err += c;
+                    throw IPCFormatError(err);
+                }
         }
     }
     
@@ -71,7 +66,7 @@ body (variable-length binary string. Details are defined in protobuf specs)
         frame.get_message()->SerializeToString(&body_buf);
 
         std::string header_buf = header_sig;
-        header_buf += s_u16_le(version);
+        header_buf += s_u16_le(current_version);
         header_buf += frametype2char(frame.get_frame_type());
         header_buf += s_u16_le(frame.get_method_number());
         header_buf += s_u32_le(body_buf.size());
@@ -105,16 +100,16 @@ body (variable-length binary string. Details are defined in protobuf specs)
             throw IPCFormatError("Unknown method number " + std::to_string(method_number));
         }
 
-        const std::string message_name;
+        std::string message_name;
         if (frame_type == IPCFrame::RequestType) {
-            message_name = spec.req;
+            message_name = spec->req;
         } else if (frame_type == IPCFrame::ResponseType) {
-            message_name = spec.resp;
+            message_name = spec->resp;
         } else {
             throw IPCFormatError("Not appropriate frame type");
         }
 
-        google::protobuf::Descriptor* desc = google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(message_name);
+        auto desc = google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(message_name);
         if (desc == nullptr) {
             throw IPCFormatError("Can't find the protobuf description of " + message_name);
         }
@@ -128,13 +123,13 @@ body (variable-length binary string. Details are defined in protobuf specs)
         return IPCFrame(frame_type, message);
     }
 
-    void IPCFrameMapper::init_frame_mapper() {
+    void IPCFrameChannel::init_frame_channel() {
         init_frame_specs();
     }
 
-    int IPCFrame::get_method_number() {
+    int IPCFrame::get_method_number() const {
         auto spec = find_spec_by_name(message->GetTypeName());
         if (spec == nullptr) return -1;
-        return spec.method_number;
+        return spec->method_number;
     };
 }
