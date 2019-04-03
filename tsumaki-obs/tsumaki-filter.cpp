@@ -3,6 +3,9 @@
 #include <fstream>
 #include <memory>
 #include "tsumaki-filter.hpp"
+#include "ipc-error.hpp"
+
+#include "protobuf/Heartbeat.pb.h"
 
 
 namespace tsumaki {
@@ -103,6 +106,12 @@ namespace tsumaki {
 
         if (!curr_ipc->check_process()) {
             curr_ipc->spawn_process();
+        }
+        try {
+            HeartbeatRequest req;
+            // curr_ipc->request_sync(make_shared<ipc::Message>(req.New()));
+        } catch (ipc::IPCError &err) {
+            blog(LOG_ERROR, "[Tsumaki] %s", err.what());
         }
     }
 

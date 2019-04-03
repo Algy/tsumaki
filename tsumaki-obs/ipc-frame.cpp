@@ -1,3 +1,4 @@
+#include <google/protobuf/message.h>
 #include <unordered_map>
 #include "ipc-spec.hpp"
 #include "ipc-frame.hpp"

@@ -37,7 +37,8 @@ set(tsumaki_SOURCES
     tsumaki-math.cpp
     image-cvt.cpp
     ipc.cpp
-    ipc-frame.cpp)
+    ipc-frame.cpp
+    ipc-spec.cpp)
 
 set(tsumaki_PROTOBUF_SOURCES
     protobuf/DetectPerson.pb.cc
