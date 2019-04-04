@@ -33,13 +33,13 @@ namespace tsumaki {
     class OBSFilter {
     private:
         obs_source_t* context;
-
     public:
         OBSFilter() : error(LOG_ERROR, *this), warn(LOG_WARNING, *this), info(LOG_INFO, *this), debug(LOG_DEBUG, *this) {};
         virtual ~OBSFilter() {};
         void set_context(obs_source_t* context) { this->context = context; };
         obs_source_t* get_context() { return context; };
     public:
+        virtual void run_once() {};
         virtual void init() = 0;
         virtual void destroy() = 0;
         virtual void update_settings(obs_data_t *settings) = 0;

@@ -1,5 +1,6 @@
 #include <obs-module.h>
 #include <chrono>
+#include <atomic>
 #include "tsumaki-filter.hpp"
 
 OBS_DECLARE_MODULE()
@@ -37,6 +38,8 @@ static struct obs_source_frame* do_filter(TsumakiFilter* filter, struct obs_sour
     return converted_frame.get_obs_frame();
 }
 
+std::atomic<int> filter_creation_count(0);
+
 struct obs_source_info tsumaki_filter = {
 	.id = "tsumaki_filter",
 	.type = OBS_SOURCE_TYPE_FILTER,
@@ -47,6 +50,10 @@ struct obs_source_info tsumaki_filter = {
         filter->set_context(context);
         filter->init();
         filter->update_settings(settings);
+
+        if (filter_creation_count++ == 0) {
+            filter->run_once();
+        }
         filter->debug << "tsumaki has been initialized" << filter->debug.endl;
         return static_cast<void *>(filter);
     },

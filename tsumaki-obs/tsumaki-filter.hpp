@@ -15,6 +15,7 @@ namespace tsumaki {
         ~TsumakiFilter();
         virtual void init();
         virtual void destroy();
+        virtual void run_once();
         virtual void update_settings(obs_data_t *settings);
         virtual void get_properties(obs_properties_t* props);
         virtual void detach(obs_source_t *parent);

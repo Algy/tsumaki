@@ -19,6 +19,7 @@ namespace tsumaki::ipc {
     IPCConnection IPC::generate_connection() {
         return IPCConnection(host, port);
     }
+
     void IPC::init_ipc_system() {
         net::init();
         signal(SIGPIPE, SIG_IGN);

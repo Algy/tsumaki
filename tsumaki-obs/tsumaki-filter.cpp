@@ -12,13 +12,14 @@ namespace tsumaki {
     TsumakiFilter::TsumakiFilter() : OBSFilter() {
         curr_ipc = unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
     }
-
+    void TsumakiFilter::run_once() {
+        ipc::IPC::init_ipc_system();
+    }
     TsumakiFilter::~TsumakiFilter() {
     }
 
 
     void TsumakiFilter::init() {
-        ipc::IPC::init_ipc_system();
 
         if (!curr_ipc->check_process()) {
             curr_ipc->spawn_process();
