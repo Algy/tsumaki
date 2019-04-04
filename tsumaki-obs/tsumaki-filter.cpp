@@ -9,7 +9,7 @@
 
 
 namespace tsumaki {
-    TsumakiFilter::TsumakiFilter() {
+    TsumakiFilter::TsumakiFilter() : OBSFilter() {
         curr_ipc = unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
     }
 
@@ -31,13 +31,12 @@ namespace tsumaki {
             auto result = curr_ipc->request_sync(req);
             if (result.success) {
                 auto resp = static_cast<HeartbeatResponse*>(result.message.get());
-
-                blog(LOG_INFO, "[Tsumaki] Recv %s", resp->hello().c_str());
+                info << "Recv " << resp->hello() << info.endl;
             } else {
-                blog(LOG_INFO, "[Tsumaki] Error (%d) %s", result.error_code, result.error_message.c_str());
+                error << result.error_code << " " << result.error_code << error.endl;
             }
         } catch (ipc::IPCError &err) {
-            blog(LOG_ERROR, "[Tsumaki] %s", err.what());
+            error << err.what() << error.endl;
         }
     }
 

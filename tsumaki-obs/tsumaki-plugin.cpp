@@ -47,7 +47,7 @@ struct obs_source_info tsumaki_filter = {
         filter->set_context(context);
         filter->init();
         filter->update_settings(settings);
-        blog(LOG_INFO, "[Tsumaki] tsumaki has been created");
+        filter->debug << "tsumaki has been initialized" << filter->debug.endl;
         return static_cast<void *>(filter);
     },
 	.destroy = [] (void *data) {
@@ -56,14 +56,16 @@ struct obs_source_info tsumaki_filter = {
         delete filter;
     },
 	.get_properties = [] (void *data) {
+        TsumakiFilter *filter = static_cast<TsumakiFilter *>(data);
         obs_properties_t *props = obs_properties_create();
-        static_cast<TsumakiFilter *>(data)->get_properties(props);
-        blog(LOG_INFO, "[Tsumaki] Properties initialized");
+        filter->get_properties(props);
+        filter->debug << "properties have been initialized" << filter->debug.endl;
         return props;
     },
 	.update = [] (void *data, obs_data_t *settings) {
-        static_cast<TsumakiFilter *>(data)->update_settings(settings);
-        blog(LOG_INFO, "[Tsumaki] Updated settings");
+        TsumakiFilter *filter = static_cast<TsumakiFilter *>(data);
+        filter->update_settings(settings);
+        filter->info << "settings updated" << filter->info.endl;
     },
 	.filter_video = [] (void *data, struct obs_source_frame *obs_frame) {
         TsumakiFilter* filter = static_cast<TsumakiFilter *>(data);
@@ -73,7 +75,7 @@ struct obs_source_info tsumaki_filter = {
         auto t1 = fn();
         struct obs_source_frame* filtered_obs_frame = do_filter(filter, obs_frame);
         auto t2 = fn();
-        blog(LOG_INFO, "MS: %d", (int)(t2 - t1));
+        filter->info << "MS: " << (int)(t2 - t1) << filter->info.endl;
         return filtered_obs_frame;
     },
 	.filter_remove = [] (void *data, obs_source_t *parent) {

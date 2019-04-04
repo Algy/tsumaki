@@ -94,4 +94,33 @@ namespace tsumaki {
         unique_ptr<VideoFormatCvt> cvt = make_video_format_cvt(*this, frame);
         return cvt->get_num_planes();
     }
+
+    OBSLogger& OBSLogger::operator<<(int i) {
+        line_buffer += std::to_string(i);
+        return *this;
+    }
+    OBSLogger& OBSLogger::operator<<(float i) {
+        line_buffer += std::to_string(i);
+        return *this;
+    }
+    OBSLogger& OBSLogger::operator<<(double i) {
+        line_buffer += std::to_string(i);
+        return *this;
+    }
+
+    OBSLogger& OBSLogger::operator<<(const char* buf) {
+        line_buffer += buf;
+        return *this;
+    }
+
+    OBSLogger& OBSLogger::operator<<(const std::string &str) {
+        line_buffer += str;
+        return *this;
+    }
+
+    OBSLogger& OBSLogger::operator<<(const OBSLoggerEndl&) {
+        blog(level, "[%s] %s", filter.get_scope_name(), line_buffer.c_str());
+        line_buffer = "";
+        return *this;
+    }
 }
