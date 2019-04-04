@@ -8,12 +8,22 @@ namespace tsumaki::ipc {
 
     bool UnixIPC::check_process() {
         int pid_n = -1;
-        std::ifstream pid_file(pid_file_path);
-        if (pid_file.fail()) return false;
-        pid_file >> pid_n;
+        if (this->pid >= 0) {
+            pid_n = this->pid;
+        } else {
+            std::ifstream pid_file(pid_file_path);
+            if (!pid_file.fail()) {
+                pid_file >> pid_n;
+            }
+        }
+
         if (pid_n >= 1) {
             pid_t pid = (pid_t)pid_n;
-            return kill(pid, 0) == 0;
+            bool alive = kill(pid, 0) == 0;
+            if (alive) {
+                this->pid = pid_n;
+            }
+            return alive;
         }
         return false;
     }
@@ -49,18 +59,15 @@ namespace tsumaki::ipc {
             // parent
             std::ofstream file(pid_file_path);
             file << (int)pid;
+            this->pid = (int)pid;
         }
         return true;
     }
 
     void UnixIPC::terminate_process() {
-        int pid_n;
-        std::ifstream pid_file(pid_file_path);
-        if (pid_file.fail()) return;
-        pid_file >> pid_n;
-        if (pid_n >= 1) {
-            pid_t pid = (pid_t)pid_n;
-            kill(pid, SIGTERM);
+        if (!check_process()) return;
+        if (pid >= 1) {
+            kill((pid_t)pid, SIGTERM);
             std::remove(pid_file_path.c_str());
         }
     }

@@ -82,7 +82,7 @@ struct obs_source_info tsumaki_filter = {
         auto t1 = fn();
         struct obs_source_frame* filtered_obs_frame = do_filter(filter, obs_frame);
         auto t2 = fn();
-        filter->info << "MS: " << (int)(t2 - t1) << filter->info.endl;
+        // filter->info << "MS: " << (int)(t2 - t1) << filter->info.endl;
         return filtered_obs_frame;
     },
 	.filter_remove = [] (void *data, obs_source_t *parent) {

@@ -13,17 +13,24 @@ namespace tsumaki::ipc {
         std::shared_ptr<Message> message;
         std::string error_message;
         int error_code;
+    public:
+        template <typename ResponseType>
+        ResponseType& get_response() {
+            return *dynamic_cast<ResponseType*>(message.get());
+        }
     };
 
     class IPC {
     protected:
         std::string host;
         int port;
+        int pid = -1;
     private:
         IPCConnection base_conn;
     public:
         static void init_ipc_system();
         IPC(std::string host = "127.0.0.1", int port = 1125) : host(host), port(port), base_conn(host, port) {};
+
         virtual ~IPC();
         virtual bool check_process() = 0;
         virtual bool spawn_process() = 0;

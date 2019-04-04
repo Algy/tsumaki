@@ -2,21 +2,22 @@
 #include <string>
 #include <obs-module.h>
 #include <memory>
+#include <mutex>
 #include "frame.hpp"
 
 namespace tsumaki {
-    class OBSFilter;
     class OBSFrame;
-    class OBSLoggerEndl {
-    };
+    class OBSLoggable;
+    class OBSLoggerEndl {};
     class OBSLogger {
     private:
         int level;
-        const OBSFilter &filter; // weak reference
+        const OBSLoggable &filter; // weak reference
         const std::string scope_name;
         std::string line_buffer;
+        std::mutex mutex;
     public:
-        OBSLogger(int level, const OBSFilter &filter) : level(level), filter(filter) {};
+        OBSLogger(int level, const OBSLoggable &filter) : level(level), filter(filter) {};
     public:
         OBSLoggerEndl endl;
     public:
@@ -28,13 +29,24 @@ namespace tsumaki {
         OBSLogger& operator<<(const OBSLoggerEndl&);
     };
 
-    // info << 12 << 3 << "( " << info.endl;
+    class OBSLoggable {
+    public:
+        OBSLogger error;
+        OBSLogger warn;
+        OBSLogger info;
+        OBSLogger debug;
+    public:
+        OBSLoggable() : error(LOG_ERROR, *this), warn(LOG_WARNING, *this), info(LOG_INFO, *this), debug(LOG_DEBUG, *this) {};
+    public:
+        virtual const char* get_scope_name() const = 0;
+    };
 
-    class OBSFilter {
+
+    class OBSFilter : public OBSLoggable {
     private:
         obs_source_t* context;
     public:
-        OBSFilter() : error(LOG_ERROR, *this), warn(LOG_WARNING, *this), info(LOG_INFO, *this), debug(LOG_DEBUG, *this) {};
+        OBSFilter() : OBSLoggable()  {};
         virtual ~OBSFilter() {};
         void set_context(obs_source_t* context) { this->context = context; };
         obs_source_t* get_context() { return context; };
@@ -45,15 +57,9 @@ namespace tsumaki {
         virtual void update_settings(obs_data_t *settings) = 0;
         virtual void get_properties(obs_properties_t* props) = 0;
         virtual void detach(obs_source_t *parent) = 0;
-        virtual const char* get_scope_name() const = 0;
         virtual std::unique_ptr<Frame> frame_update(std::unique_ptr<Frame> frame) = 0;
     public:
         std::unique_ptr<OBSFrame> wrap_obs_frame(struct obs_source_frame* frame);
-    public:
-        OBSLogger error;
-        OBSLogger warn;
-        OBSLogger info;
-        OBSLogger debug;
     protected:
         const char* T(const char* lookup_str); // translate
     };

@@ -1,15 +1,14 @@
 #pragma once
 #include <memory>
 #include "obs-filter.hpp"
-#include "platform-def.hpp"
-#include "ipc.hpp"
+#include "tsumaki-api-thread.hpp"
 
 
 namespace tsumaki {
     class TsumakiFilter : public OBSFilter {
     private:
-        std::unique_ptr<ipc::IPC> curr_ipc;
         uint64_t interval;
+        std::shared_ptr<ApiThread> api_thread;
     public:
         TsumakiFilter();
         ~TsumakiFilter();

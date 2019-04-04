@@ -3,6 +3,7 @@
 #include <fstream>
 #include <memory>
 #include "tsumaki-filter.hpp"
+#include "tsumaki-api-thread.hpp"
 #include "ipc-error.hpp"
 
 #include "protobuf/Heartbeat.pb.h"
@@ -10,38 +11,23 @@
 
 namespace tsumaki {
     TsumakiFilter::TsumakiFilter() : OBSFilter() {
-        curr_ipc = unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
     }
+
     void TsumakiFilter::run_once() {
-        ipc::IPC::init_ipc_system();
+        ApiThread::init_once();
     }
+
     TsumakiFilter::~TsumakiFilter() {
     }
 
 
     void TsumakiFilter::init() {
-
-        if (!curr_ipc->check_process()) {
-            curr_ipc->spawn_process();
-        }
-
-        try {
-            curr_ipc->sleep(5000);
-            std::shared_ptr<HeartbeatRequest> req { new HeartbeatRequest() };
-            req->set_hello("HELLO!");
-            auto result = curr_ipc->request_sync(req);
-            if (result.success) {
-                auto resp = static_cast<HeartbeatResponse*>(result.message.get());
-                info << "Recv " << resp->hello() << info.endl;
-            } else {
-                error << result.error_code << " " << result.error_code << error.endl;
-            }
-        } catch (ipc::IPCError &err) {
-            error << err.what() << error.endl;
-        }
+        api_thread = std::shared_ptr<ApiThread>(new ApiThread());
+        api_thread->start_thread();
     }
 
     void TsumakiFilter::destroy() {
+        api_thread->stop_thread();
     }
 
     void TsumakiFilter::update_settings(obs_data_t *settings) {

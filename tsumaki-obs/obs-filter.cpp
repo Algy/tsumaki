@@ -96,29 +96,35 @@ namespace tsumaki {
     }
 
     OBSLogger& OBSLogger::operator<<(int i) {
+        std::lock_guard<std::mutex> lock(mutex);
         line_buffer += std::to_string(i);
         return *this;
     }
     OBSLogger& OBSLogger::operator<<(float i) {
+        std::lock_guard<std::mutex> lock(mutex);
         line_buffer += std::to_string(i);
         return *this;
     }
     OBSLogger& OBSLogger::operator<<(double i) {
+        std::lock_guard<std::mutex> lock(mutex);
         line_buffer += std::to_string(i);
         return *this;
     }
 
     OBSLogger& OBSLogger::operator<<(const char* buf) {
+        std::lock_guard<std::mutex> lock(mutex);
         line_buffer += buf;
         return *this;
     }
 
     OBSLogger& OBSLogger::operator<<(const std::string &str) {
+        std::lock_guard<std::mutex> lock(mutex);
         line_buffer += str;
         return *this;
     }
 
     OBSLogger& OBSLogger::operator<<(const OBSLoggerEndl&) {
+        std::lock_guard<std::mutex> lock(mutex);
         blog(level, "[%s] %s", filter.get_scope_name(), line_buffer.c_str());
         line_buffer = "";
         return *this;

@@ -28,24 +28,30 @@ namespace tsumaki::ipc {
 
 
     static RPCResult do_request(IPCConnection &conn, std::shared_ptr<Message> message) {
-        conn.ensure_connection();
-        IPCFrameChannel channel(conn);
+        try {
+            conn.ensure_connection();
+            IPCFrameChannel channel(conn);
 
-        IPCFrame request_frame(IPCFrame::RequestType, message);
-        channel.send(request_frame);
-        IPCFrame resp_frame = channel.receive();
+            IPCFrame request_frame(IPCFrame::RequestType, message);
+            channel.send(request_frame);
+            IPCFrame resp_frame = channel.receive();
 
-        RPCResult result;
-        if (resp_frame.is_error()) {
-            ErrorResponse& err_message = static_cast<ErrorResponse&>(*resp_frame.get_message());
-            result.success = false;
-            result.error_code = err_message.code();
-            result.error_message = err_message.msg();
-        } else {
-            result.success = true;
-            result.message = resp_frame.get_message();
+            RPCResult result;
+            if (resp_frame.is_error()) {
+                ErrorResponse& err_message = static_cast<ErrorResponse&>(*resp_frame.get_message());
+                result.success = false;
+                result.error_code = err_message.code();
+                result.error_message = err_message.msg();
+            } else {
+                result.success = true;
+                result.message = resp_frame.get_message();
+            }
+            return result;
+        } catch (ipc::IPCConnectionClosedError &err) {
+            (void)err;
+            conn.close();
+            throw;
         }
-        return result;
     }
 
     RPCResult IPC::request_sync(std::shared_ptr<Message> message) {

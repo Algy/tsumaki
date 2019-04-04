@@ -34,6 +34,7 @@ endif()
 set(tsumaki_SOURCES
     obs-filter.cpp
 	tsumaki-filter.cpp
+    tsumaki-api-thread.cpp
 	tsumaki-plugin.cpp
     tsumaki-math.cpp
     frame.cpp
