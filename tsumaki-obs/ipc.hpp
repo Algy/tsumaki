@@ -28,6 +28,8 @@ namespace tsumaki::ipc {
         virtual bool check_process() = 0;
         virtual bool spawn_process() = 0;
         virtual void terminate_process() = 0;
+        virtual void sleep(unsigned int milliseconds) = 0;
+
         RPCResult request_sync(std::shared_ptr<Message> message);
         void request_async(
             std::shared_ptr<Message> message,
@@ -37,6 +39,5 @@ namespace tsumaki::ipc {
     protected:
         IPCConnection generate_connection();
     };
-
     const std::string bin_version = "0.0.1";
 };

@@ -32,9 +32,11 @@ endif()
 
 
 set(tsumaki_SOURCES
+    obs-filter.cpp
 	tsumaki-filter.cpp
 	tsumaki-plugin.cpp
     tsumaki-math.cpp
+    frame.cpp
     image-cvt.cpp
     ipc.cpp
     ipc-connection.cpp

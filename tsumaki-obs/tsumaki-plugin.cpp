@@ -45,11 +45,16 @@ struct obs_source_info tsumaki_filter = {
 	.create = [] (obs_data_t *settings, obs_source_t *context) {
         TsumakiFilter *filter = new TsumakiFilter();
         filter->set_context(context);
+        filter->init();
         filter->update_settings(settings);
         blog(LOG_INFO, "[Tsumaki] tsumaki has been created");
         return static_cast<void *>(filter);
     },
-	.destroy = [] (void *data) { delete static_cast<TsumakiFilter *>(data); },
+	.destroy = [] (void *data) {
+        TsumakiFilter *filter = static_cast<TsumakiFilter *>(data);
+        filter->destroy();
+        delete filter;
+    },
 	.get_properties = [] (void *data) {
         obs_properties_t *props = obs_properties_create();
         static_cast<TsumakiFilter *>(data)->get_properties(props);

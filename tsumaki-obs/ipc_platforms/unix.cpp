@@ -1,4 +1,5 @@
 #include <fstream>
+#include <unistd.h>
 #include "unix.hpp"
 
 namespace tsumaki::ipc {
@@ -62,5 +63,9 @@ namespace tsumaki::ipc {
             kill(pid, SIGTERM);
             std::remove(pid_file_path.c_str());
         }
+    }
+
+    void UnixIPC::sleep(unsigned int milliseconds) {
+        usleep(milliseconds * 1000);
     }
 }
