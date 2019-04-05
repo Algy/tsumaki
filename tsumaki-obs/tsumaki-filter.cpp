@@ -41,13 +41,16 @@ namespace tsumaki {
     void TsumakiFilter::detach(obs_source_t *parent) { (void)parent; }
 
     unique_ptr<Frame> TsumakiFilter::frame_update(unique_ptr<Frame> frame) {
+
+        int width = frame->get_width();
+        int height = frame->get_height();
         auto rgba = frame->get_rgba_image();
-        // blog(LOG_INFO, "SIZE: %d", (int)rgba->get_size());
-        for (int i = 0; i < rgba->get_size(); i++) {
-            // rgba->data[i] = 255 - rgba->data[i];
+        api_thread->put_frame(std::move(frame));
+        unique_ptr<Frame> output_frame = api_thread->get_frame();
+        if (output_frame == nullptr) {
+            return unique_ptr<Frame>(new RGBAFrame(ConvertedRGBAImage::make_black(width, height)));
         }
-        unique_ptr<Frame> new_frame { new RGBAFrame(rgba) };
-        return new_frame;
+        return output_frame;
     }
 };
 

@@ -1,18 +1,16 @@
 #include "tsumaki-api-thread.hpp"
 #include "platform-def.hpp"
 #include "protobuf/Heartbeat.pb.h"
+#include "protobuf/DetectPerson.pb.h"
+
 #define MAX_ATTEMPTS 10
 
-/*
- *
- *
- */
 namespace tsumaki {
     void ApiThread::init_once() {
         ipc::IPC::init_ipc_system();
     }
 
-    ApiThread::ApiThread() : OBSLoggable() {
+    ApiThread::ApiThread() : OBSLoggable(), input_queue(1), output_queue(1) {
         curr_ipc = std::unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
     }
 
@@ -42,7 +40,14 @@ namespace tsumaki {
             try {
                 auto result = curr_ipc->request_sync(req);
                 auto resp = result.get_response<HeartbeatResponse>();
-                if (resp.hello() != "Hi") {
+                if (!result.success || resp.hello() != "Hi") {
+                    this->impaired = true;
+                    return;
+                }
+
+                result = curr_ipc->request_sync(req);
+                resp = result.get_response<HeartbeatResponse>();
+                if (!result.success || resp.hello() != "Hi") {
                     this->impaired = true;
                     return;
                 }
@@ -60,8 +65,46 @@ namespace tsumaki {
         info << "Connected to the worker process!" << info.endl;
 
         while (run_flag) {
-            curr_ipc->sleep(1000);
-            info << "HI" << info.endl;
+            std::unique_ptr<Frame> frame = input_queue.get(1000);
+            if (frame == nullptr) {
+                continue;
+            }
+
+            auto rgba = frame->get_rgba_image();
+            try {
+                std::shared_ptr<DetectPersonRequest> req { new DetectPersonRequest() };
+
+                auto p_image = req->mutable_image();
+                p_image->set_width(rgba->width);
+                p_image->set_height(rgba->height);
+                p_image->set_data(rgba->data, rgba->get_size());
+                req->set_base_dimension(512);
+                auto p_neural_param = req->mutable_neural_param();
+                p_neural_param->set_branch("incubator");
+                p_neural_param->set_name("mobilenetv2");
+                p_neural_param->set_version("0.0.1");
+                p_neural_param->set_dimension(256);
+                auto result = curr_ipc->request_sync(req);
+
+                if (result.success) {
+                    auto resp = result.get_response<DetectPersonRequest>();
+                    info << "Got response" << info.endl;
+                } else {
+                    error << result.error_message << error.endl;
+                }
+            } catch (ipc::IPCError &err) {
+                error << err.what() << error.endl;
+            }
+
+            output_queue.put_replace(std::move(frame));
         }
+    }
+
+    void ApiThread::put_frame(std::unique_ptr<Frame> frame) {
+        input_queue.put_replace(std::move(frame));
+    }
+
+    std::unique_ptr<Frame> ApiThread::get_frame() {
+        return output_queue.get(16);
     }
 };

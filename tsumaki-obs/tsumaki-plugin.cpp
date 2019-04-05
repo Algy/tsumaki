@@ -19,7 +19,7 @@ static struct obs_source_frame* do_filter(TsumakiFilter* filter, struct obs_sour
 
     // Case 1. If filter_update returned nullptr, return nullptr and skip the current frame. 
     if (output_frame == nullptr) {
-        return static_cast<struct obs_source_frame *>(nullptr);
+        return (struct obs_source_frame *)NULL;
     }
 
     // Case 2. If filter_update returned an OBSFrame, we don't need to convert its format.

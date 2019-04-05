@@ -3,6 +3,7 @@
 #include <memory>
 #include "ipc.hpp"
 #include "obs-filter.hpp"
+#include "thread-util.hpp"
 
 namespace tsumaki {
     class ApiThread : public OBSLoggable {
@@ -12,6 +13,9 @@ namespace tsumaki {
         bool impaired = false;
 
         bool run_flag = false;
+
+        threadutil::UniquePtrQueue<Frame> input_queue;
+        threadutil::UniquePtrQueue<Frame> output_queue;
     public:
         ApiThread();
     public:
@@ -21,10 +25,11 @@ namespace tsumaki {
         void start_thread();
         void stop_thread();
         void run();
+
+        void put_frame(std::unique_ptr<Frame> frame);
+        std::unique_ptr<Frame> get_frame();
         static void init_once();
         virtual const char* get_scope_name() const { return "Tsumaki-ApiThread"; };
 
-    private:
-        void spawn_and_check();
     };
 };

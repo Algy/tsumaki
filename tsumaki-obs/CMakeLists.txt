@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     add_compile_options("/W3" "$<$<CONFIG:RELEASE>:/O2>")
 else()
-    set(CMAKE_CXX_FLAGS "-Wall -Wextra -O3")
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra -O0")
 endif()
 
 
