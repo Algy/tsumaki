@@ -10,10 +10,9 @@ namespace tsumaki {
         virtual bool check_process();
         virtual bool spawn_process();
         virtual void terminate_process();
-	virtual void sleep(unsigned int milliseconds);
-
+        virtual void sleep(unsigned int milliseconds);
     private:
-	    int find_pid();
-	    std::wstring get_pid_file_path();
+        int find_pid();
+        std::wstring get_pid_file_path();
     };
 }
