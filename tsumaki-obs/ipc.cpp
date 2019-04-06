@@ -5,7 +5,6 @@
 #include <cerrno>
 #include <csignal>
 #include <sys/types.h>
-#include <signal.h>
 #include <vector>
 #include <thread>
 #include "ipc.hpp"
@@ -22,7 +21,9 @@ namespace tsumaki {
 
     void IPC::init_ipc_system() {
         net::init();
-        signal(SIGPIPE, SIG_IGN);
+#ifdef SIGPIPE
+        std::signal(SIGPIPE, SIG_IGN);
+#endif
         IPCFrameChannel::init_frame_channel();
     }
 
