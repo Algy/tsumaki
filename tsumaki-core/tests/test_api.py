@@ -80,3 +80,26 @@ def test_detect_person_api(transport_pair):
     iou = ((pred_mask & person_mask).sum() / (pred_mask | person_mask).sum())
     assert iou >= 0.6
 
+
+def test_setup_device_api(transport_pair):
+    import numpy as np
+    from PIL import Image
+
+    server_transport, client_transport = transport_pair
+    def server():
+        try:
+            server = api.TsumakiApiServer(server_transport)
+            server.run(once=True)
+        except Exception as exc:
+            print(str(exc))
+
+    Thread(target=server, daemon=True).start()
+    request = api.SetupDeviceRequest()
+    client_transport.write_frame(request, "request")
+
+    frame, frame_type = client_transport.read_frame()
+
+    assert isinstance(frame, api.SetupDeviceResponse)
+    assert frame_type == 'response'
+
+

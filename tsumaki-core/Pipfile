@@ -10,10 +10,10 @@ pillow = "*"
 pyinstaller = "*"
 
 [packages]
-scipy="*"
 click = "*"
 protobuf = "*"
 plaidml-keras = "*"
+scikit-image = "*"
 
 [requires]
 python_version = "3.7"

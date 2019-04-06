@@ -7,8 +7,11 @@ install_backend()
 
 from .ipc import IPCApiServer
 from .ipc import (HeartbeatRequest, HeartbeatResponse,
-                  DetectPersonRequest, DetectPersonResponse)
+                  DetectPersonRequest, DetectPersonResponse,
+                  SetupDeviceRequest, SetupDeviceResponse)
 from .ipc import ErrorResponse
+
+from .device_setup import DeviceSetup, Device
 
 
 
@@ -37,7 +40,6 @@ def detect_person(server, request_frame):
     import numpy as np
 
     from tsumaki.model_branch.incubator.mobilenetv2 import Model
-    from scipy.misc import imresize
     width, height = request_frame.image.width, request_frame.image.height
     image = np.frombuffer(request_frame.image.data, dtype=np.uint8)
     image = image.reshape(height, width, 4)
@@ -64,3 +66,27 @@ def detect_person(server, request_frame):
     resp.mask.height = height
     return resp
 
+@TsumakiApiServer.route(SetupDeviceRequest)
+def setup_device_api(server, request_frame):
+    def assign(a, b):
+        a.id = b.id
+        a.description = b.description
+        a.experimental = b.experimental
+    device_setup = DeviceSetup()
+    target_device_id = request_frame.target_device_id
+    available_devices = device_setup.available_devices
+    if target_device_id:
+        target_device = device_setup.find_device_by_id(target_device_id)
+        if not target_device:
+            return ErrorResponse(code=404, msg=f"Unspported device {target_device_id}")
+        device_setup.current_device = target_device
+        device_setup.save()
+    current_device = device_setup.current_device
+    response = SetupDeviceResponse()
+    if current_device:
+        assign(response.current_device, current_device)
+
+
+    for device in available_devices:
+        assign(response.available_devices.add(), device)
+    return response

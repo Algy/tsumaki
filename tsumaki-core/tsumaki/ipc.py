@@ -7,10 +7,12 @@ from google.protobuf.message import Error as MessageError
 from DetectPerson_pb2 import DetectPersonRequest, DetectPersonResponse
 from Heartbeat_pb2 import HeartbeatRequest, HeartbeatResponse
 from ErrorResponse_pb2 import ErrorResponse
+from SetupDevice_pb2 import SetupDeviceRequest, SetupDeviceResponse
 
 RequestDef_v1 = {
     0: (HeartbeatRequest, HeartbeatResponse),
     1: (DetectPersonRequest, DetectPersonResponse),
+    2: (SetupDeviceRequest, SetupDeviceResponse),
 }
 
 class IPCError(Exception):

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package tsumaki;
+
+message Device {
+    string id = 1;
+    string description = 2;
+    bool experimental = 3;
+};
+
+message SetupDeviceRequest {
+    string target_device_id = 1; // optional
+}
+
+message SetupDeviceResponse {
+    Device current_device = 1;
+    repeated Device available_devices = 2;
+}
+
+service SetupDeviceService {
+    rpc SetupDevice (SetupDeviceRequest) returns (SetupDeviceResponse);
+}

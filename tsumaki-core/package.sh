@@ -12,6 +12,7 @@ pyinstaller \
 --add-binary "$PYLIB/libplaidml.so:." \
 --add-data "$PYSHARE:./share" \
 --add-data "./tsumaki/model_branch/incubator/data:./tsumaki/model_branch/incubator/data" \
+--hidden-import 'pywt._extensions._cwt' \
 --onefile \
 --paths ./tsumaki/tsumaki_protobuf \
 ./bin/tsumaki
