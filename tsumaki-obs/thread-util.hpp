@@ -6,7 +6,7 @@
 #include <chrono>
 #include <iostream>
 
-namespace tsumaki::threadutil {
+namespace tsumaki {
     template<typename T>
     class UniquePtrQueue {
     private:

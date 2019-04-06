@@ -14,8 +14,8 @@ namespace tsumaki {
 
         bool run_flag = false;
 
-        threadutil::UniquePtrQueue<Frame> input_queue;
-        threadutil::UniquePtrQueue<Frame> output_queue;
+        UniquePtrQueue<Frame> input_queue;
+        UniquePtrQueue<Frame> output_queue;
     public:
         ApiThread();
     public:
