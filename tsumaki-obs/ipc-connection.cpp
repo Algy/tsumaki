@@ -2,6 +2,12 @@
 #include "ipc-error.hpp"
 
 namespace tsumaki {
+
+    template<typename T>
+    static T minimum(T a, T b) {
+        return (a < b)? a : b;
+    }
+
     IPCConnection::~IPCConnection() {
         close();
     }
@@ -25,7 +31,7 @@ namespace tsumaki {
         const char *source = content.c_str();
 
         while (num_written < length) {
-            const int num_to_write = std::min(block_size, length - num_written);
+            const int num_to_write = minimum(block_size, length - num_written);
             int wrt = psocket->send(source + num_written, num_to_write);
             if (wrt < 0) {
                 throw IPCConnectionClosedError(std::strerror(errno));
@@ -42,10 +48,10 @@ namespace tsumaki {
         std::string result;
         result.reserve(length);
 
-        std::unique_ptr<char> buffer{ new char[std::min(block_size, length)] };
+        std::unique_ptr<char> buffer{ new char[minimum(block_size, length)] };
         int num_read = 0;
         while (num_read < length) {
-            const int num_to_read = std::min(block_size, length - num_read);
+            const int num_to_read = minimum(block_size, length - num_read);
             int rd = psocket->recv(buffer.get(), num_to_read);
             if (rd < 0) {
                 throw IPCConnectionClosedError("Connection closed being interrupted: " + std::string(std::strerror(errno)));
