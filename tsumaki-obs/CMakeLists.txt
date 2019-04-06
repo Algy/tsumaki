@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     add_compile_options("/W3" "$<$<CONFIG:RELEASE>:/O2>")
 else()
-    set(CMAKE_CXX_FLAGS "-Wall -Wextra -O0")
+    set(CMAKE_CXX_FLAGS "-Wall -Wextra -O3")
 endif()
 
 
@@ -21,7 +21,7 @@ endif()
 
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
-include_directories(${PROTOBUF_INCLUDE_DIR})
+include_directories(${Protobuf_INCLUDE_DIR})
 
 
 
@@ -70,7 +70,7 @@ add_library(tsumaki MODULE
 target_link_libraries(tsumaki
 	libobs
 	${tsumaki_PLATFORM_DEPS}
-    ${PROTOBUF_LIBRARY})
+    ${Protobuf_LIBRARY})
 
 
 install_obs_plugin_with_data(tsumaki data)
