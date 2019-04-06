@@ -10,12 +10,13 @@ pillow = "*"
 pyinstaller = "*"
 
 [packages]
-numpy = "*"
-six = "*"
-keras = "*"
-plaidml-keras = "*"
+scipy="*"
 click = "*"
 protobuf = "*"
+plaidml-keras = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true

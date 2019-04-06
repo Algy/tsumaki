@@ -1,7 +1,7 @@
 import click
 import os
 
-from .api import TsumakiApiServer
+from .api import TsumakiApiServer, build_model
 from .transport import run_unix_socket_server, run_tcp_socket_server
 
 @click.group()
@@ -20,3 +20,24 @@ def run(socket, host, port, block_size, concurrency):
         run_unix_socket_server(TsumakiApiServer, socket, block_size, concurrency)
     else:
         run_tcp_socket_server(TsumakiApiServer, host, port, block_size, concurrency)
+
+
+@cli.command()
+def self_check():
+    import numpy as np
+    img = np.ndarray((200, 200, 3), dtype=np.uint8)
+    model = build_model("incubator", "mobilenetv2", "0.0.1", 256)
+    model.predict(img)
+
+
+@cli.command()
+def plaidml_setup():
+    from plaidml.plaidml_setup import main
+    from plaidml import settings
+    print(settings.user_settings)
+    main()
+
+
+@cli.command()
+def shell():
+    pass

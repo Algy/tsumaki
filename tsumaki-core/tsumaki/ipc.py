@@ -205,6 +205,6 @@ class IPCApiServer:
             except IPCTransportClosedError as exc:
                 raise
             except Exception as exc:
-                self.send_error(500, "Internal Server Error")
+                self.send_error(500, f"Internal Server Error: {exc!r}")
                 self.logger.exception("error raised on ipc hanlder")
 

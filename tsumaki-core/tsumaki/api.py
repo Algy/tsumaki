@@ -26,6 +26,11 @@ def heartbeat(server, request_frame):
 
 
 models = {}
+def build_model(branch, name, version, neural_dim):
+    from tsumaki.model_branch.incubator.mobilenetv2 import Model
+    if (name, neural_dim) not in models:
+        models[name, neural_dim] = Model(neural_dim )
+    return models[name, neural_dim]
 
 @TsumakiApiServer.route(DetectPersonRequest)
 def detect_person(server, request_frame):
@@ -42,17 +47,16 @@ def detect_person(server, request_frame):
     neural_dim = neural_param.dimension
     name, branch, version = neural_param.name, neural_param.branch, neural_param.version
 
-    try:
-        model = models[name, neural_dim]
-    except KeyError:
-        if branch != 'incubator':
-            return ErrorResponse(code=404, msg=f"Unspported branch {branch}") 
-        if name == 'mobilenetv2':
-            models[name, neural_dim] = model = Model(neural_dim)
-        elif name == 'xception':
-            raise NotImplementedError("TODO")
-        else:
-            return ErrorResponse(code=404, msg=f"Unspported neural net {name}")
+
+    if branch != 'incubator':
+        return ErrorResponse(code=404, msg=f"Unspported branch {branch}") 
+    if name == 'mobilenetv2':
+        model = build_model(branch, name, version, neural_dim)
+    elif name == 'xception':
+        raise NotImplementedError("TODO")
+    else:
+        return ErrorResponse(code=404, msg=f"Unspported neural net {name}")
+
     mask = model.predict(image)
     resp = DetectPersonResponse()
     resp.mask.data = mask.tobytes()
