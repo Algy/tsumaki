@@ -23,7 +23,7 @@ namespace tsumaki {
 
     void TsumakiFilter::init() {
         api_thread = std::shared_ptr<ApiThread>(new ApiThread());
-        api_thread->start_thread();
+        api_thread->start_thread(api_thread);
     }
 
     void TsumakiFilter::destroy() {

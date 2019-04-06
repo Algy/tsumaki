@@ -22,7 +22,7 @@ namespace tsumaki {
         bool is_ready() { return ready; };
         bool is_impared() { return impaired; };
         bool is_preparing() { return !ready && !impaired; };
-        void start_thread();
+        void start_thread(std::shared_ptr<ApiThread> this_ref);
         void stop_thread();
         void run();
 

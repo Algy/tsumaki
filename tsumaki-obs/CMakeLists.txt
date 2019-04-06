@@ -55,6 +55,7 @@ endif()
 set(tsumaki_PROTOBUF_SOURCES
     protobuf/DetectPerson.pb.cc
     protobuf/ErrorResponse.pb.cc
+    protobuf/SetupDevice.pb.cc
     protobuf/Heartbeat.pb.cc
     protobuf/MaskImage.pb.cc
     protobuf/RGBAImage.pb.cc)

@@ -14,9 +14,8 @@ namespace tsumaki {
         curr_ipc = std::unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
     }
 
-    void ApiThread::start_thread() {
+    void ApiThread::start_thread(std::shared_ptr<ApiThread> this_ref) {
         run_flag = true;
-        std::shared_ptr<ApiThread> this_ref{ this };
         std::thread([this_ref] { this_ref->run(); }).detach();
     }
 
@@ -84,11 +83,33 @@ namespace tsumaki {
                 p_neural_param->set_name("mobilenetv2");
                 p_neural_param->set_version("0.0.1");
                 p_neural_param->set_dimension(256);
+                auto fn = [] { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); };
+
+                auto t1 = fn();
                 auto result = curr_ipc->request_sync(req);
+                auto t2 = fn();
+
 
                 if (result.success) {
-                    auto resp = result.get_response<DetectPersonRequest>();
-                    info << "Got response" << info.endl;
+                    auto resp = result.get_response<DetectPersonResponse>();
+
+                    int width = resp.mask().width();
+                    int height = resp.mask().height();
+                    const std::string& data = resp.mask().data();
+                    int size = width * height;
+                    float density = 0;
+                    auto rgba = frame->get_rgba_image();
+                    #pragma omp parallel for
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++) {
+                            density += (float)((unsigned char)data[i * width +j] >= 128) / (float)size;
+                            if ((unsigned int)data[i * width +j] < 128) {
+                                rgba->data[i * (width * 4) + j * 4 + 1] = 255;
+                            }
+                        }
+                    }
+                    frame = std::unique_ptr<Frame>(new RGBAFrame(rgba));
+                    info << "Request MS: " << (int)(t2 - t1) << " Got response " << density << info.endl;
                 } else {
                     error << result.error_message << error.endl;
                 }
@@ -105,6 +126,6 @@ namespace tsumaki {
     }
 
     std::unique_ptr<Frame> ApiThread::get_frame() {
-        return output_queue.get(16);
+        return output_queue.get(1000);
     }
 };
