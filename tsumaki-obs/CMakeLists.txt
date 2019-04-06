@@ -27,7 +27,9 @@ include_directories(${Protobuf_INCLUDE_DIR})
 
 if(MSVC)
 	set(tsumaki_PLATFORM_DEPS
-		w32-pthreads)
+		w32-pthreads
+		wsock32
+		ws2_32)
 endif()
 
 
