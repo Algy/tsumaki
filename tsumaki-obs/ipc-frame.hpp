@@ -6,7 +6,7 @@
 #include "ipc-error.hpp"
 #include "ipc-connection.hpp"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     using Message = ::google::protobuf::Message;
     class IPCFrame {
     public:

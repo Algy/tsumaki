@@ -4,7 +4,7 @@
 #include "ipc-spec.hpp"
 #include "ipc-frame.hpp"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     const std::string header_sig = "@(^o^)=@";
     const std::string trailer_sig = "@=(^o^)@";
     const int current_version = 1;

@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "unix.hpp"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     const std::string pid_file_path = "/var/run/tsumaki.pid";
     const std::string base_file_path = "/usr/local/share/tsumaki";
 

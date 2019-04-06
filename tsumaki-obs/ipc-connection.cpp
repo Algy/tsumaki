@@ -1,7 +1,7 @@
 #include "ipc-connection.hpp"
 #include "ipc-error.hpp"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     IPCConnection::~IPCConnection() {
         close();
     }

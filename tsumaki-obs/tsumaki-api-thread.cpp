@@ -7,11 +7,11 @@
 
 namespace tsumaki {
     void ApiThread::init_once() {
-        ipc::IPC::init_ipc_system();
+        IPC::init_ipc_system();
     }
 
     ApiThread::ApiThread() : OBSLoggable(), input_queue(1), output_queue(1) {
-        curr_ipc = std::unique_ptr<ipc::IPC>(new AvailableIPC("127.0.0.1", 1125));
+        curr_ipc = std::unique_ptr<IPC>(new AvailableIPC("127.0.0.1", 1125));
     }
 
     void ApiThread::start_thread(std::shared_ptr<ApiThread> this_ref) {
@@ -52,7 +52,7 @@ namespace tsumaki {
                 }
                 heartbeat_ok = true;
                 break;
-            } catch (ipc::IPCError &err) {
+            } catch (IPCError &err) {
                 error << "Retrying due to ipc error: " << err.what() << error.endl;
             }
         }
@@ -113,7 +113,7 @@ namespace tsumaki {
                 } else {
                     error << result.error_message << error.endl;
                 }
-            } catch (ipc::IPCError &err) {
+            } catch (IPCError &err) {
                 error << err.what() << error.endl;
             }
 

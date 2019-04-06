@@ -6,7 +6,7 @@
 #include "ipc-connection.hpp"
 #include "ipc-frame.hpp"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     class RPCResult {
     public:
         bool success;

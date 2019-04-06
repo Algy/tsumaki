@@ -1,7 +1,7 @@
 #include "../ipc.hpp"
 
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     class Win32IPC : public IPC {
         using IPC::IPC;
         virtual bool check_process();

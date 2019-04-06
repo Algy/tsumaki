@@ -1,7 +1,7 @@
 #pragma once
 #include <exception>
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     class IPCError : public std::exception {
     public:
         std::string what_message;

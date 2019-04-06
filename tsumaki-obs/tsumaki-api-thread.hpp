@@ -8,7 +8,7 @@
 namespace tsumaki {
     class ApiThread : public OBSLoggable {
     private:
-        std::unique_ptr<ipc::IPC> curr_ipc;
+        std::unique_ptr<IPC> curr_ipc;
         bool ready = false;
         bool impaired = false;
 

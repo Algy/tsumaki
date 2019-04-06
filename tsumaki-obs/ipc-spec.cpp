@@ -7,7 +7,7 @@
 #include "protobuf/DetectPerson.pb.h"
 
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     static std::map<int, const IPCFrameSpec*> _method_to_spec;
     static std::map<std::string, const IPCFrameSpec*> _name_to_spec;
     static std::vector<IPCFrameSpec> frame_specs = {

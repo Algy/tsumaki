@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     class IPCFrameSpec {
     public:
         const int method_number;

@@ -3,7 +3,7 @@
 #include <memory>
 #include "deps/xsocket.hpp"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     class IPCConnection {
     private:
         const std::string host;

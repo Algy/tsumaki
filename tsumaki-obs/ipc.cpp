@@ -11,7 +11,7 @@
 #include "ipc.hpp"
 #include "protobuf/ErrorResponse.pb.h"
 
-namespace tsumaki::ipc {
+namespace tsumaki {
     IPC::~IPC() {
         base_conn.close();
     }
@@ -47,7 +47,7 @@ namespace tsumaki::ipc {
                 result.message = resp_frame.get_message();
             }
             return result;
-        } catch (ipc::IPCConnectionClosedError &err) {
+        } catch (IPCConnectionClosedError &err) {
             (void)err;
             conn.close();
             throw;
