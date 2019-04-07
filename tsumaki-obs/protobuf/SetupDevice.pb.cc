@@ -137,7 +137,7 @@ void protobuf_AddDesc_SetupDevice_2eproto() {
     "evice\022*\n\021available_devices\030\002 \003(\0132\017.tsuma"
     "ki.Device2^\n\022SetupDeviceService\022H\n\013Setup"
     "Device\022\033.tsumaki.SetupDeviceRequest\032\034.ts"
-    "umaki.SetupDeviceResponseb\006proto3", 353);
+    "umaki.SetupDeviceResponseB\002H\001b\006proto3", 357);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "SetupDevice.proto", &protobuf_RegisterTypes);
   Device::default_instance_ = new Device();

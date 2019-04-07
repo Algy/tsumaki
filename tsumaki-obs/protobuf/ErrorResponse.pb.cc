@@ -84,8 +84,8 @@ void protobuf_AddDesc_ErrorResponse_2eproto() {
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\023ErrorResponse.proto\022\007tsumaki\"*\n\rErrorR"
-    "esponse\022\014\n\004code\030\001 \001(\005\022\013\n\003msg\030\002 \001(\tb\006prot"
-    "o3", 82);
+    "esponse\022\014\n\004code\030\001 \001(\005\022\013\n\003msg\030\002 \001(\tB\002H\001b\006"
+    "proto3", 86);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "ErrorResponse.proto", &protobuf_RegisterTypes);
   ErrorResponse::default_instance_ = new ErrorResponse();

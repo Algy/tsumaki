@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='RGBAImage.proto',
   package='tsumaki',
   syntax='proto3',
-  serialized_pb=_b('\n\x0fRGBAImage.proto\x12\x07tsumaki\"8\n\tRGBAImage\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x62\x06proto3')
+  serialized_pb=_b('\n\x0fRGBAImage.proto\x12\x07tsumaki\"8\n\tRGBAImage\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\x42\x02H\x01\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -80,4 +80,6 @@ RGBAImage = _reflection.GeneratedProtocolMessageType('RGBAImage', (_message.Mess
 _sym_db.RegisterMessage(RGBAImage)
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('H\001'))
 # @@protoc_insertion_point(module_scope)

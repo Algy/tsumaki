@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='DetectPerson.proto',
   package='tsumaki',
   syntax='proto3',
-  serialized_pb=_b('\n\x12\x44\x65tectPerson.proto\x12\x07tsumaki\x1a\x0fRGBAImage.proto\x1a\x0fMaskImage.proto\"\xe9\x01\n\x13\x44\x65tectPersonRequest\x12!\n\x05image\x18\x01 \x01(\x0b\x32\x12.tsumaki.RGBAImage\x12\x16\n\x0e\x62\x61se_dimension\x18\x02 \x01(\r\x12\x42\n\x0cneural_param\x18\x03 \x01(\x0b\x32,.tsumaki.DetectPersonRequest.NeuralParameter\x1aS\n\x0fNeuralParameter\x12\x0e\n\x06\x62ranch\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x11\n\tdimension\x18\x04 \x01(\r\"8\n\x14\x44\x65tectPersonResponse\x12 \n\x04mask\x18\x01 \x01(\x0b\x32\x12.tsumaki.MaskImage2b\n\x13\x44\x65tectPersonService\x12K\n\x0c\x44\x65tectPerson\x12\x1c.tsumaki.DetectPersonRequest\x1a\x1d.tsumaki.DetectPersonResponseb\x06proto3')
+  serialized_pb=_b('\n\x12\x44\x65tectPerson.proto\x12\x07tsumaki\x1a\x0fRGBAImage.proto\x1a\x0fMaskImage.proto\"\xe9\x01\n\x13\x44\x65tectPersonRequest\x12!\n\x05image\x18\x01 \x01(\x0b\x32\x12.tsumaki.RGBAImage\x12\x16\n\x0e\x62\x61se_dimension\x18\x02 \x01(\r\x12\x42\n\x0cneural_param\x18\x03 \x01(\x0b\x32,.tsumaki.DetectPersonRequest.NeuralParameter\x1aS\n\x0fNeuralParameter\x12\x0e\n\x06\x62ranch\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x11\n\tdimension\x18\x04 \x01(\r\"8\n\x14\x44\x65tectPersonResponse\x12 \n\x04mask\x18\x01 \x01(\x0b\x32\x12.tsumaki.MaskImage2b\n\x13\x44\x65tectPersonService\x12K\n\x0c\x44\x65tectPerson\x12\x1c.tsumaki.DetectPersonRequest\x1a\x1d.tsumaki.DetectPersonResponseB\x02H\x01\x62\x06proto3')
   ,
   dependencies=[RGBAImage__pb2.DESCRIPTOR,MaskImage__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -185,4 +185,6 @@ DetectPersonResponse = _reflection.GeneratedProtocolMessageType('DetectPersonRes
 _sym_db.RegisterMessage(DetectPersonResponse)
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('H\001'))
 # @@protoc_insertion_point(module_scope)

@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='SetupDevice.proto',
   package='tsumaki',
   syntax='proto3',
-  serialized_pb=_b('\n\x11SetupDevice.proto\x12\x07tsumaki\"?\n\x06\x44\x65vice\x12\n\n\x02id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x14\n\x0c\x65xperimental\x18\x03 \x01(\x08\".\n\x12SetupDeviceRequest\x12\x18\n\x10target_device_id\x18\x01 \x01(\t\"j\n\x13SetupDeviceResponse\x12\'\n\x0e\x63urrent_device\x18\x01 \x01(\x0b\x32\x0f.tsumaki.Device\x12*\n\x11\x61vailable_devices\x18\x02 \x03(\x0b\x32\x0f.tsumaki.Device2^\n\x12SetupDeviceService\x12H\n\x0bSetupDevice\x12\x1b.tsumaki.SetupDeviceRequest\x1a\x1c.tsumaki.SetupDeviceResponseb\x06proto3')
+  serialized_pb=_b('\n\x11SetupDevice.proto\x12\x07tsumaki\"?\n\x06\x44\x65vice\x12\n\n\x02id\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x14\n\x0c\x65xperimental\x18\x03 \x01(\x08\".\n\x12SetupDeviceRequest\x12\x18\n\x10target_device_id\x18\x01 \x01(\t\"j\n\x13SetupDeviceResponse\x12\'\n\x0e\x63urrent_device\x18\x01 \x01(\x0b\x32\x0f.tsumaki.Device\x12*\n\x11\x61vailable_devices\x18\x02 \x03(\x0b\x32\x0f.tsumaki.Device2^\n\x12SetupDeviceService\x12H\n\x0bSetupDevice\x12\x1b.tsumaki.SetupDeviceRequest\x1a\x1c.tsumaki.SetupDeviceResponseB\x02H\x01\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -167,4 +167,6 @@ SetupDeviceResponse = _reflection.GeneratedProtocolMessageType('SetupDeviceRespo
 _sym_db.RegisterMessage(SetupDeviceResponse)
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('H\001'))
 # @@protoc_insertion_point(module_scope)

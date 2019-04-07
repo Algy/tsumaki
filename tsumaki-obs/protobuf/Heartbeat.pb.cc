@@ -108,7 +108,7 @@ void protobuf_AddDesc_Heartbeat_2eproto() {
     "equest\022\r\n\005hello\030\001 \001(\t\"\"\n\021HeartbeatRespon"
     "se\022\r\n\005hello\030\001 \001(\t2V\n\020HeartbeatService\022B\n"
     "\tHeartbeat\022\031.tsumaki.HeartbeatRequest\032\032."
-    "tsumaki.HeartbeatResponseb\006proto3", 193);
+    "tsumaki.HeartbeatResponseB\002H\001b\006proto3", 197);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "Heartbeat.proto", &protobuf_RegisterTypes);
   HeartbeatRequest::default_instance_ = new HeartbeatRequest();

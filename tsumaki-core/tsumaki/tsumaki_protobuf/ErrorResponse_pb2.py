@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='ErrorResponse.proto',
   package='tsumaki',
   syntax='proto3',
-  serialized_pb=_b('\n\x13\x45rrorResponse.proto\x12\x07tsumaki\"*\n\rErrorResponse\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0b\n\x03msg\x18\x02 \x01(\tb\x06proto3')
+  serialized_pb=_b('\n\x13\x45rrorResponse.proto\x12\x07tsumaki\"*\n\rErrorResponse\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0b\n\x03msg\x18\x02 \x01(\tB\x02H\x01\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -73,4 +73,6 @@ ErrorResponse = _reflection.GeneratedProtocolMessageType('ErrorResponse', (_mess
 _sym_db.RegisterMessage(ErrorResponse)
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('H\001'))
 # @@protoc_insertion_point(module_scope)

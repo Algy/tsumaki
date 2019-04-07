@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='Heartbeat.proto',
   package='tsumaki',
   syntax='proto3',
-  serialized_pb=_b('\n\x0fHeartbeat.proto\x12\x07tsumaki\"!\n\x10HeartbeatRequest\x12\r\n\x05hello\x18\x01 \x01(\t\"\"\n\x11HeartbeatResponse\x12\r\n\x05hello\x18\x01 \x01(\t2V\n\x10HeartbeatService\x12\x42\n\tHeartbeat\x12\x19.tsumaki.HeartbeatRequest\x1a\x1a.tsumaki.HeartbeatResponseb\x06proto3')
+  serialized_pb=_b('\n\x0fHeartbeat.proto\x12\x07tsumaki\"!\n\x10HeartbeatRequest\x12\r\n\x05hello\x18\x01 \x01(\t\"\"\n\x11HeartbeatResponse\x12\r\n\x05hello\x18\x01 \x01(\t2V\n\x10HeartbeatService\x12\x42\n\tHeartbeat\x12\x19.tsumaki.HeartbeatRequest\x1a\x1a.tsumaki.HeartbeatResponseB\x02H\x01\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -105,4 +105,6 @@ HeartbeatResponse = _reflection.GeneratedProtocolMessageType('HeartbeatResponse'
 _sym_db.RegisterMessage(HeartbeatResponse)
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('H\001'))
 # @@protoc_insertion_point(module_scope)

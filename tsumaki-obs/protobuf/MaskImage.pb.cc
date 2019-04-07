@@ -86,7 +86,7 @@ void protobuf_AddDesc_MaskImage_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\017MaskImage.proto\022\007tsumaki\"8\n\tMaskImage\022"
     "\r\n\005width\030\001 \001(\005\022\016\n\006height\030\002 \001(\005\022\014\n\004data\030\003"
-    " \001(\014b\006proto3", 92);
+    " \001(\014B\002H\001b\006proto3", 96);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "MaskImage.proto", &protobuf_RegisterTypes);
   MaskImage::default_instance_ = new MaskImage();

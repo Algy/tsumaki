@@ -144,7 +144,7 @@ void protobuf_AddDesc_DetectPerson_2eproto() {
     "nse\022 \n\004mask\030\001 \001(\0132\022.tsumaki.MaskImage2b\n"
     "\023DetectPersonService\022K\n\014DetectPerson\022\034.t"
     "sumaki.DetectPersonRequest\032\035.tsumaki.Det"
-    "ectPersonResponseb\006proto3", 465);
+    "ectPersonResponseB\002H\001b\006proto3", 469);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "DetectPerson.proto", &protobuf_RegisterTypes);
   DetectPersonRequest::default_instance_ = new DetectPersonRequest();
