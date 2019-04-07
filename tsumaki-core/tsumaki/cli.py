@@ -75,5 +75,5 @@ def bench():
     diff_std = np.sqrt(batch_std ** 2 + std ** 2) / 100
     print(f"Single Sample Time: {mu:.3f}(std: {std:.3f})")
     print(f"Batch(N=101) Sample Time: {batch_mu:.3f}(std: {batch_std:.3f})")
-    print(f"Estimated Overhead: {diff_mu:.3f}(std: {diff_std:.3f})")
+    print(f"Estimated Real Sample Time: {diff_mu:.3f}(std: {diff_std:.3f})")
 
