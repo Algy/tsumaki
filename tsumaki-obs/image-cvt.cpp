@@ -141,7 +141,6 @@ namespace tsumaki {
         const uint8_t *y_plane = planes[0];
 
         uint8_t *data = result->data;
-        #pragma omp parallel for
         for (int i = 0; i < height / 2; i++) {
             for (int j = 0; j < width / 2; j++) {
                 int chroma_index = u_line_size * i + j;
@@ -197,7 +196,6 @@ namespace tsumaki {
         uint8_t *plane_2 = convertable.get_modifiable_plane(2);
 
         const uint8_t *data = image.data;
-        #pragma omp parallel for
         for (int i = 0; i < height / 2; i++) {
             for (int j = 0; j < width / 2; j++) {
                 int chroma_index = u_line_size * i + j;
@@ -291,7 +289,6 @@ namespace tsumaki {
         int packed_line_size = convertable.get_line_size(0);
         const uint8_t *plane = convertable.get_plane(0);
         uint8_t *data = result->data;
-        #pragma omp parallel for
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width * 2; j += 4) {
                 const uint8_t *pixel_ptr = &plane[packed_line_size*i + j];
@@ -333,7 +330,6 @@ namespace tsumaki {
         int packed_line_size = convertable.get_line_size(0);
         uint8_t *plane = convertable.get_modifiable_plane(0);
         const uint8_t *data = image.data;
-        #pragma omp parallel for
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j += 2) {
                 int index = width * 4 * i + 4 * j;
