@@ -1,7 +1,6 @@
 #include "tsumaki-api-thread.hpp"
 #include "platform-def.hpp"
 #include "protobuf/Heartbeat.pb.h"
-#include "protobuf/DetectPerson.pb.h"
 
 #define MAX_ATTEMPTS 10
 
@@ -91,7 +90,9 @@ namespace tsumaki {
 
 
                 if (result.success) {
-                    auto resp = result.get_response<DetectPersonResponse>();
+                    // auto resp = result.get_response<DetectPersonResponse>();
+                    last_mask_response = std::dynamic_pointer_cast<DetectPersonResponse>(result.message);
+                    /*
 
                     int width = resp.mask().width();
                     int height = resp.mask().height();
@@ -99,7 +100,6 @@ namespace tsumaki {
                     int size = width * height;
                     float density = 0;
                     auto rgba = frame->get_rgba_image();
-                    #pragma omp parallel for
                     for (int i = 0; i < height; i++) {
                         for (int j = 0; j < width; j++) {
                             density += (float)((unsigned char)data[i * width +j] >= 128) / (float)size;
@@ -108,16 +108,15 @@ namespace tsumaki {
                             }
                         }
                     }
-                    frame = std::unique_ptr<Frame>(new RGBAFrame(rgba));
-                    info << "Request MS: " << (int)(t2 - t1) << " Got response " << density << info.endl;
+                    */
+                    //frame = std::unique_ptr<Frame>(new RGBAFrame(rgba));
                 } else {
                     error << result.error_message << error.endl;
                 }
             } catch (IPCError &err) {
                 error << err.what() << error.endl;
             }
-
-            output_queue.put_replace(std::move(frame));
+            //output_queue.put_replace(std::move(frame));
         }
     }
 

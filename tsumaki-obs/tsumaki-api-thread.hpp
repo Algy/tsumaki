@@ -4,6 +4,7 @@
 #include "ipc.hpp"
 #include "obs-filter.hpp"
 #include "thread-util.hpp"
+#include "protobuf/DetectPerson.pb.h"
 
 namespace tsumaki {
     class ApiThread : public OBSLoggable {
@@ -14,10 +15,13 @@ namespace tsumaki {
 
         bool run_flag = false;
 
+
         UniquePtrQueue<Frame> input_queue;
         UniquePtrQueue<Frame> output_queue;
     public:
         ApiThread();
+    public:
+        std::shared_ptr<DetectPersonResponse> last_mask_response;
     public:
         bool is_ready() { return ready; };
         bool is_impared() { return impaired; };
