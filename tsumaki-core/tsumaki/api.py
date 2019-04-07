@@ -35,7 +35,7 @@ def build_model(branch, name, version, neural_dim):
         models[name, neural_dim] = Model(neural_dim )
     return models[name, neural_dim]
 
-counter
+counter = 0
 @TsumakiApiServer.route(DetectPersonRequest)
 def detect_person(server, request_frame):
     global counter
