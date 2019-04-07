@@ -47,25 +47,28 @@ namespace tsumaki {
         std::shared_ptr<ConvertedRGBAImage> copied_img { new ConvertedRGBAImage(*frame->get_rgba_image()) };
         api_thread->put_frame(std::unique_ptr<Frame>(new RGBAFrame(copied_img)));
 
-        if (api_thread->last_mask_response) {
-            auto &mask = api_thread->last_mask_response->mask();
-            int mask_width = mask.width();
-            int mask_height = mask.height();
-            const std::string& data = mask.data();
+        if (api_thread->last_mask_response != nullptr) {
+            auto acquired_resp = api_thread->last_mask_response;
+            if (acquired_resp != nullptr) {
+                auto &mask = acquired_resp->mask();
+                int mask_width = mask.width();
+                int mask_height = mask.height();
+                const std::string& data = mask.data();
 
-            if (mask_width == width && mask_height == height) {
-                auto frame_rgba = frame->get_rgba_image();
-                for (int i = 0; i < height; i++) {
-                    for (int j = 0; j < width; j++) {
-                        if ((uint8_t)data[i * width + j] < 128) {
-                            uint8_t *base_ptr = &frame_rgba->data[i * (width * 4) + j * 4];
-                            base_ptr[0] = 0;
-                            base_ptr[1] = 255;
-                            base_ptr[2] = 0;
+                if (mask_width == width && mask_height == height) {
+                    auto frame_rgba = frame->get_rgba_image();
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++) {
+                            if ((uint8_t)data[i * width + j] < 128) {
+                                uint8_t *base_ptr = &frame_rgba->data[i * (width * 4) + j * 4];
+                                base_ptr[0] = 0;
+                                base_ptr[1] = 255;
+                                base_ptr[2] = 0;
+                            }
                         }
                     }
+                    return std::unique_ptr<Frame>(new RGBAFrame(frame_rgba));
                 }
-                return std::unique_ptr<Frame>(new RGBAFrame(frame_rgba));
             }
         }
         return frame;
