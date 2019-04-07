@@ -41,3 +41,39 @@ def plaidml_setup():
 @cli.command()
 def shell():
     pass
+
+@cli.command()
+def bench():
+    import numpy as np
+    import time
+    img = np.ndarray((480, 640, 3), dtype=np.uint8)
+    model = build_model("incubator", "mobilenetv2", "0.0.1", 256)
+    # Burn in
+    model.predict(img)
+
+    times = []
+    for _ in range(3):
+        t1 = time.time()
+        model.predict(img)
+        t2 = time.time()
+        times.append(t2 - t1)
+
+    batch_times = []
+    arr = [img for _ in range(101)]
+
+    # Burn in
+    model.predict_multi(arr)
+    for _ in range(3):
+        t1 = time.time()
+        model.predict_multi(arr)
+        t2 = time.time()
+        batch_times.append(t2 - t1)
+    mu, std = np.mean(times), np.std(times)
+    batch_mu, batch_std = np.mean(batch_times), np.std(batch_times)
+
+    diff_mu = (batch_mu - mu) / 100
+    diff_std = np.sqrt(batch_std ** 2 + std ** 2) / 100
+    print(f"Single Sample Time: {mu:.3f}(std: {std:.3f})")
+    print(f"Batch(N=101) Sample Time: {batch_mu:.3f}(std: {batch_std:.3f})")
+    print(f"Estimated Overhead: {diff_mu:.3f}(std: {diff_std:.3f})")
+

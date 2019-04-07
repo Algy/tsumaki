@@ -24,14 +24,27 @@ class Model:
         )
         self.nn_predictor.load_weights(os.path.join(data_path, "./256_dice_coef_vocaug.h5"))
 
+    def predict_multi(self, images):
+        if len(images) == 0:
+            return []
+        resized_images, padded_images = [], []
+        for image in images:
+            resized_image, padded_image = self._crop(image)
+            resized_images.append(resized_image)
+            padded_images.append(padded_image)
+        
+        scaled = self._scale(np.stack(padded_images))
+        preds = self.nn_predictor.predict(scaled)[:, :, :, 0]
+        masks = (preds * 255).astype(np.uint8)
+
+        results = []
+        for mask, ri, img in zip(masks, resized_images, images):
+            upscaled_mask = resize(mask[:ri.shape[0], :ri.shape[1]], img.shape[:2][::-1])
+            results.append(upscaled_mask)
+        return results
+
     def predict(self, image):
-        h, w = image.shape[:2]
-        resized_image, padded_image = self._crop(image)
-        pred = self.nn_predictor.predict(self._scale(padded_image[np.newaxis, :, :, :]))[0, :, :, 0]
-        pred = pred[:resized_image.shape[0], :resized_image.shape[1]]
-        mask = (pred * 255).astype(np.uint8)
-        upscaled_mask = resize(mask, (w, h))
-        return upscaled_mask 
+        return self.predict_multi([image])[0]
 
     def _crop(self, img, use_nearest=False):
         dim = self.neural_dim
