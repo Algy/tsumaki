@@ -35,8 +35,10 @@ def build_model(branch, name, version, neural_dim):
         models[name, neural_dim] = Model(neural_dim )
     return models[name, neural_dim]
 
+counter
 @TsumakiApiServer.route(DetectPersonRequest)
 def detect_person(server, request_frame):
+    global counter
     import numpy as np
 
     from tsumaki.model_branch.incubator.mobilenetv2 import Model
@@ -59,7 +61,13 @@ def detect_person(server, request_frame):
     else:
         return ErrorResponse(code=404, msg=f"Unspported neural net {name}")
 
+    import time
+    t1 = time.time()
     mask = model.predict(image)
+    t2 = time.time()
+    if counter % 30 == 0:
+        print("DT:", t2 - t1)
+    counter += 1
     resp = DetectPersonResponse()
     resp.mask.data = mask.tobytes()
     resp.mask.width = width
