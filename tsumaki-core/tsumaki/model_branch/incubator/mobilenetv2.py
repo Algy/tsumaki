@@ -5,8 +5,7 @@ from keras.models import Sequential
 from keras.layers import Activation, Lambda
 from keras import backend as K
 
-from skimage.transform import resize
-from skimage.util import img_as_ubyte
+from tsumaki.image_utils import resize
 
 from tsumaki.model_zoo.deeplabv3plus.model import Deeplabv3
 
@@ -31,7 +30,7 @@ class Model:
         pred = self.nn_predictor.predict(self._scale(padded_image[np.newaxis, :, :, :]))[0, :, :, 0]
         pred = pred[:resized_image.shape[0], :resized_image.shape[1]]
         mask = (pred * 255).astype(np.uint8)
-        upscaled_mask = img_as_ubyte(resize(mask, (h, w)))
+        upscaled_mask = resize(mask, (w, h))
         return upscaled_mask 
 
     def _crop(self, img, use_nearest=False):
@@ -39,7 +38,7 @@ class Model:
         h, w = img.shape[:2]
         ratio = dim / max(h, w)
         new_h, new_w = int(h * ratio), int(w * ratio)
-        resized = img_as_ubyte(resize(img, (new_h, new_w)))
+        resized = resize(img, (new_w, new_h))
         pad_h, pad_w = dim - resized.shape[0], dim - resized.shape[1]
         if len(img.shape) == 2:
             return resized, np.pad(resized, ((0,pad_h),(0,pad_w)),mode='constant')

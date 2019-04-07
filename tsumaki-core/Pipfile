@@ -6,14 +6,13 @@ verify_ssl = true
 [dev-packages]
 pytest = "*"
 hypothesis = "*"
-pillow = "*"
 pyinstaller = "*"
 
 [packages]
 click = "*"
 protobuf = "*"
 plaidml-keras = "*"
-scikit-image = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.7"
