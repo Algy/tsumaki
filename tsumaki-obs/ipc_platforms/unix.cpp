@@ -1,5 +1,6 @@
 #include <fstream>
 #include <unistd.h>
+#include <signal.h>
 #include "unix.hpp"
 
 namespace tsumaki {

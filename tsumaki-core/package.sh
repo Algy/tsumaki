@@ -7,9 +7,15 @@ PYINCLUDE="$PYBASE/include"
 
 #--add-data "$PYLIB:./lib" \
 #--add-data "$PYINCLUDE:./include" \
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Darwin*)    LIBPLAIDML_SO=libplaidml.dylib;;
+    *)          LIBPLAIDML_SO=libplaidml.so
+esac
+
 
 pyinstaller \
---add-binary "$PYLIB/libplaidml.so:." \
+--add-binary "$PYLIB/$LIBPLAIDML_SO:." \
 --add-data "$PYSHARE:./share" \
 --add-data "./tsumaki/model_branch/incubator/data:./tsumaki/model_branch/incubator/data" \
 --hidden-import 'pywt._extensions._cwt' \
