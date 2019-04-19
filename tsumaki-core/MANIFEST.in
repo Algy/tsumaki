@@ -1,0 +1,8 @@
+global-include *.pyx
+global-include *.pxd
+global-include *.cpp
+global-include *.h
+global-include *.hpp
+global-include *.h5
+recursive-include tsumaki/tsumaki_protobuf *
+recursive-include model_branch *
