@@ -1,5 +1,6 @@
 #include "image-cvt.hpp"
 #include "tsumaki-math.hpp"
+#include <algorithm>
 
 #define FAST_CVT_601(yuv, rgb) { \
     int dy = (int)yuv[0] - 16, du = (int)yuv[1] - 128, dv = (int)yuv[2] - 128; \
@@ -48,8 +49,6 @@
 #include <iostream>
 
 
-#define QUANTIZE_LEVEL 7
-
 namespace tsumaki {
     template <typename T>
     static inline T clamp(T val, T lo, T hi) {
@@ -57,59 +56,112 @@ namespace tsumaki {
     }
 
 #ifdef USE_AVX2
+#define QUANTIZE_LEVEL 7
+#define BILINEAR_PROLOGUE  \
+    int16_t *py_array = new int16_t[new_height]; \
+    int16_t *px_array = new int16_t[new_width]; \
+    int* x1_array = new int[new_width]; \
+    int* x2_array = new int[new_width]; \
+    int* y1_array = new int[new_height]; \
+    int* y2_array = new int[new_height];\
+    const int new_height_minus_1 = new_height - 1, new_width_minus_1 = new_width - 1;\
+    for (int i = 0; i < new_height; i++) {\
+        int widn_i = i * height;\
+        int y1 = widn_i / new_height;\
+        int y2 = (widn_i + new_height_minus_1) / new_height;\
+        float py = (float)widn_i / new_height - y1;\
+        y2 = (y2 >= height)? (height - 1) : y2;\
+        py_array[i] = py * (1 << QUANTIZE_LEVEL);\
+        y1_array[i] = y1;\
+        y2_array[i] = y2;\
+    }\
+    for (int j = 0; j < new_width; j++) {\
+        int widn_j = j * width;\
+        int x1 = widn_j / new_width;\
+        int x2 = (widn_j + new_width_minus_1) / new_width;\
+        float px = (float)widn_j / new_width - x1;\
+        x2 = (x2 >= width)? (width - 1) : x2;\
+        px_array[j] = px * (1 << QUANTIZE_LEVEL);\
+        x1_array[j] = x1;\
+        x2_array[j] = x2;\
+    }\
+    __m256i max_255 = _mm256_set1_epi16(255);
+
+#define BILINEAR_BODY(lt_vec, rt_vec, lb_vec, rb_vec) \
+                __m256i top_sub = _mm256_sub_epi16(rt_vec, lt_vec);\
+                __m256i bot_sub = _mm256_sub_epi16(rb_vec, lb_vec);\
+                __m256i p1 = _mm256_add_epi16(lt_vec, _mm256_srai_epi16(_mm256_mullo_epi16(top_sub, interpx_vec), QUANTIZE_LEVEL));\
+                __m256i p2 = _mm256_add_epi16(lb_vec, _mm256_srai_epi16(_mm256_mullo_epi16(bot_sub, interpx_vec), QUANTIZE_LEVEL));\
+                __m256i p3 = _mm256_add_epi16(p1, _mm256_srai_epi16(_mm256_mullo_epi16(_mm256_sub_epi16(p2, p1), interpy_vec), QUANTIZE_LEVEL));\
+                p3 = _mm256_min_epi16(p3, max_255);\
+                __m128i lo = _mm256_extracti128_si256(p3, 0);\
+                __m128i hi = _mm256_extracti128_si256(p3, 1);\
+                __m128i pixs_vec = _mm_packus_epi16(lo, hi);
+
+#define BILINEAR_EPILOGUE \
+        delete [] py_array; \
+        delete [] px_array; \
+        delete [] x1_array; \
+        delete [] x2_array; \
+        delete [] y1_array; \
+        delete [] y2_array;
+
+
+    ConvertedMaskImage ConvertedMaskImage::resize_bilinear(int new_width, int new_height) {
+        ConvertedMaskImage result(new_width, new_height);
+        if (new_width <= 0 || new_height <= 0) return result;
+        BILINEAR_PROLOGUE;
+        const uint8_t* orig_data = data;
+        uint8_t *new_data = result.data;
+        for (int i = 0; i < new_height; i++) {
+            __m256i interpy_vec = _mm256_set1_epi16(py_array[i]);
+            int y1 = y1_array[i], y2 = y2_array[i];
+            for (int j = 0; j < new_width; j += 16) {
+                int x1[16], x2[16];
+                std::copy(x1_array + j, x1_array + j + 16, x1);
+                std::copy(x2_array + j, x2_array + j + 16, x2);
+
+                int16_t lt_vec_arr[16], rt_vec_arr[16], lb_vec_arr[16], rb_vec_arr[16];
+
+                for (int k =0; k < 16; k++) {
+                    lt_vec_arr[k] = orig_data[width * y1 + x1[k]];
+                    rt_vec_arr[k] = orig_data[width * y1 + x2[k]];
+                    lb_vec_arr[k] = orig_data[width * y2 + x1[k]];
+                    rb_vec_arr[k] = orig_data[width * y2 + x2[k]];
+                }
+
+                __m256i interpx_vec = _mm256_loadu_si256((__m256i *)&px_array[j]);  // load 16 pixels
+                __m256i lt_vec = _mm256_loadu_si256((__m256i *)&lt_vec_arr);
+                __m256i rt_vec = _mm256_loadu_si256((__m256i *)&rt_vec_arr);
+                __m256i lb_vec = _mm256_loadu_si256((__m256i *)&lb_vec_arr);
+                __m256i rb_vec = _mm256_loadu_si256((__m256i *)&rb_vec_arr);
+                BILINEAR_BODY(lt_vec, rt_vec, lb_vec, rb_vec);
+                _mm_storeu_si128((__m128i*)&new_data[new_width * i + j], pixs_vec);
+            }
+        }
+        BILINEAR_EPILOGUE;
+        return result;
+    }
+
     ConvertedRGBAImage ConvertedRGBAImage::resize_bilinear(int new_width, int new_height) {
         ConvertedRGBAImage result(new_width, new_height);
         if (new_width <= 0 || new_height <= 0) return result;
 
-        int16_t *py_array = new int16_t[new_height];
-        int16_t *px_array = new int16_t[new_width];
-        int* x1_array = new int[new_width];
-        int* x2_array = new int[new_width];
-        int* y1_array = new int[new_height];
-        int* y2_array = new int[new_height];
-
-        const int new_height_minus_1 = new_height - 1, new_width_minus_1 = new_width - 1;
-        for (int i = 0; i < new_height; i++) {
-            int widn_i = i * height;
-            int y1 = widn_i / new_height;
-            int y2 = (widn_i + new_height_minus_1) / new_height;
-            float py = (float)widn_i / new_height - y1;
-            y2 = (y2 >= height)? (height - 1) : y2;
-            py_array[i] = py * (1 << QUANTIZE_LEVEL);
-            y1_array[i] = y1;
-            y2_array[i] = y2;
-        }
-
-        for (int j = 0; j < new_width; j++) {
-            int widn_j = j * width;
-            int x1 = widn_j / new_width;
-            int x2 = (widn_j + new_width_minus_1) / new_width;
-            float px = (float)widn_j / new_width - x1;
-            x2 = (x2 >= width)? (width - 1) : x2;
-            px_array[j] = px * (1 << QUANTIZE_LEVEL);
-            x1_array[j] = x1;
-            x2_array[j] = x2;
-        }
-
+        BILINEAR_PROLOGUE
         const uint8_t* orig_data = data;
         uint8_t *new_data = result.data;
 
-        int st_j = 0;
-
         __m256i hi_word_dropper = _mm256_set1_epi16(0x00FF);
-        __m256i max_255 = _mm256_set1_epi16(255);
         __m256i duplicate_mask = _mm256_set_epi32(
             3, 3, 2, 2,
             1, 1, 0, 0
         );
-
         for (int i = 0; i < new_height; i++) {
             __m256i interpy_vec = _mm256_set1_epi16(py_array[i]);
             int y1 = y1_array[i], y2 = y2_array[i];
             for (int j = 0; j < new_width; j += 4) {
                 int x1[4] = {x1_array[j], x1_array[j+1], x1_array[j+2], x1_array[j+3]};
                 int x2[4] = {x2_array[j], x2_array[j + 1], x2_array[j + 2], x2_array[j + 3]};
-
 
                 __m128i m = _mm_loadl_epi64((__m128i *)&px_array[j]); 
                 __m128i dup_m = _mm_unpacklo_epi16(m, m); // [px_array[j], px_array[j], px_array[j+1], px_array[j+1], px_array[j+2], px_array[j+2], px_array[j+3], px_array[j+3]
@@ -148,32 +200,20 @@ namespace tsumaki {
                 rt_vec = _mm256_and_si256(rt_vec, hi_word_dropper);
                 lb_vec = _mm256_and_si256(lb_vec, hi_word_dropper);
                 rb_vec = _mm256_and_si256(rb_vec, hi_word_dropper);
-
-                __m256i top_sub = _mm256_sub_epi16(rt_vec, lt_vec);
-                __m256i bot_sub = _mm256_sub_epi16(rb_vec, lb_vec);
-
-
-                __m256i p1 = _mm256_add_epi16(lt_vec, _mm256_srai_epi16(_mm256_mullo_epi16(top_sub, interpx_vec), QUANTIZE_LEVEL));
-                __m256i p2 = _mm256_add_epi16(lb_vec, _mm256_srai_epi16(_mm256_mullo_epi16(bot_sub, interpx_vec), QUANTIZE_LEVEL));
-                __m256i p3 = _mm256_add_epi16(p1, _mm256_srai_epi16(_mm256_mullo_epi16(_mm256_sub_epi16(p2, p1), interpy_vec), QUANTIZE_LEVEL));
-                p3 = _mm256_min_epi16(p3, max_255);
-
-                __m128i lo = _mm256_extracti128_si256(p3, 0);
-                __m128i hi = _mm256_extracti128_si256(p3, 1);
-
-                __m128i pixs_vec = _mm_packus_epi16(lo, hi);
+                BILINEAR_BODY(lt_vec, rt_vec, lb_vec, rb_vec);
                 _mm_storeu_si128((__m128i*)&new_data[4 * new_width * i + 4 * j], pixs_vec);
             }
         }
-        delete [] py_array;
-        delete [] px_array;
-        delete [] x1_array;
-        delete [] x2_array;
-        delete [] y1_array;
-        delete [] y2_array;
+        BILINEAR_EPILOGUE;
+
         return result;
     }
 #else
+    ConvertedMaskImage ConvertedMaskImage::resize_bilinear(int new_width, int new_height) {
+        ConvertedMaskImage result(new_width, new_height);
+        // TODO
+        return result;
+    }
     ConvertedRGBAImage ConvertedRGBAImage::resize_bilinear(int new_width, int new_height) {
         ConvertedRGBAImage result(new_width, new_height);
         if (new_width <= 0 || new_height <= 0) return result;

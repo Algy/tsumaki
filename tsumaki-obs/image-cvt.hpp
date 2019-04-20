@@ -7,6 +7,50 @@ using std::unique_ptr;
 using std::shared_ptr;
 using std::vector;
 namespace tsumaki {
+    class ConvertedMaskImage {
+    public:
+        uint8_t* data;
+        int width;
+        int height;
+    public:
+        ConvertedMaskImage(int width, int height): width(width), height(height) {
+            data = new uint8_t[get_size()];
+        }
+
+        ConvertedMaskImage(const ConvertedMaskImage& other): width(other.width), height(other.height) {
+            data = new uint8_t[get_size()];
+            std::copy(other.data, other.data + get_size(), data);
+        }
+
+        ConvertedMaskImage& operator=(const ConvertedMaskImage& other) {
+            if (this == &other) {
+                return *this;
+            }
+            delete [] data;
+            width = other.width;
+            height = other.height;
+            data = new uint8_t[get_size()];
+            std::copy(other.data, other.data + get_size(), data);
+            return *this;
+        }
+
+        ~ConvertedMaskImage() {
+            delete [] data;
+        }
+
+        uint8_t get_pixel(int i, int j) const {
+            return data[width*i + j];
+        }
+
+        void set_pixel(int i, int j, uint8_t value) {
+            data[width*i + j] = value;
+        };
+
+        int get_size() const { return width * height; };
+        ConvertedMaskImage resize_bilinear(int new_width, int new_height);
+    };
+
+
     class ConvertedRGBAImage {
     public:
         uint8_t* data;
