@@ -56,6 +56,8 @@ namespace tsumaki {
 
         static shared_ptr<ConvertedRGBAImage> make_black(int width, int height);
         static shared_ptr<ConvertedRGBAImage> make_white(int width, int height);
+
+        ConvertedRGBAImage resize_bilinear(int new_width, int new_height);
     };
 
     class BaseVideoConvertable {
