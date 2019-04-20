@@ -56,6 +56,7 @@ namespace tsumaki {
         return (val < lo)? lo : ((val > hi)? hi : val);
     }
 
+#ifdef USE_AVX2
     ConvertedRGBAImage ConvertedRGBAImage::resize_bilinear(int new_width, int new_height) {
         ConvertedRGBAImage result(new_width, new_height);
         if (new_width <= 0 || new_height <= 0) return result;
@@ -172,6 +173,89 @@ namespace tsumaki {
         delete [] y2_array;
         return result;
     }
+#else
+    ConvertedRGBAImage ConvertedRGBAImage::resize_bilinear(int new_width, int new_height) {
+        ConvertedRGBAImage result(new_width, new_height);
+        if (new_width <= 0 || new_height <= 0) return result;
+
+        float *py_array = new float[new_height];
+        float *px_array = new float[new_width];
+        int* x1_array = new int[new_width];
+        int* x2_array = new int[new_width];
+        int* y1_array = new int[new_height];
+        int* y2_array = new int[new_height];
+
+        const int new_height_minus_1 = new_height - 1, new_width_minus_1 = new_width - 1;
+        for (int i = 0; i < new_height; i++) {
+            int widn_i = i * height;
+            int y1 = widn_i / new_height;
+            int y2 = (widn_i + new_height_minus_1) / new_height;
+            float py = (float)widn_i / new_height - y1;
+            y2 = (y2 >= height)? (height - 1) : y2;
+            py_array[i] = py;
+            y1_array[i] = y1;
+            y2_array[i] = y2;
+        }
+
+        for (int j = 0; j < new_width; j++) {
+            int widn_j = j * width;
+            int x1 = widn_j / new_width;
+            int x2 = (widn_j + new_width_minus_1) / new_width;
+            float px = (float)widn_j / new_width - x1;
+            x2 = (x2 >= width)? (width - 1) : x2;
+            px_array[j] = px;
+            x1_array[j] = x1;
+            x2_array[j] = x2;
+        }
+
+        const uint8_t* orig_data = data;
+        uint8_t *new_data = result.data;
+
+        int st_i = 0;
+
+        for (int i = st_i; i < new_height; i++) {
+            int y1 = y1_array[i], y2 = y2_array[i];
+            float interp_y = py_array[i];
+            for (int j = 0; j < new_width; j++) {
+                int x1 = x1_array[j], x2 = x2_array[j];
+                float interp_x = px_array[j];
+                float lts[4], rts[4], lbs[4], rbs[4];
+                float p1[4], p2[4], p3[4];
+                for (int k = 0; k < 4; k++) {
+                    lts[k] = (float)orig_data[4 * width * y1 + 4 * x1 + k];
+                }
+
+                for (int k = 0; k < 4; k++) {
+                    rts[k] = (float)orig_data[4 * width * y1 + 4 * x2 + k];
+                }
+                for (int k = 0; k < 4; k++) {
+                    lbs[k] = (float)orig_data[4 * width * y2 + 4 * x1 + k];
+                }
+                for (int k = 0; k < 4; k++) {
+                    rbs[k] = (float)orig_data[4 * width * y2 + 4 * x2 + k];
+                }
+
+                for (int k = 0; k < 4; k++) {
+                    p1[k] = lts[k] + (rts[k] - lts[k]) * interp_x;
+                    p2[k] = lbs[k] + (lbs[k] - rbs[k]) * interp_x;
+                    p3[k] = p1[k] + (p2[k] - p1[k]) * interp_y;
+                }
+
+                for (int k = 0; k < 4; k++) {
+                    new_data[4 * new_width * i + 4 * j + k] = (uint8_t)clamp(p3[k], 0.0f, 255.0f);
+                }
+            }
+        }
+
+        delete [] py_array;
+        delete [] px_array;
+        delete [] x1_array;
+        delete [] x2_array;
+        delete [] y1_array;
+        delete [] y2_array;
+        return result;
+    }
+#endif
 
     static inline void cvtcolor(const float *color_matrix, uint8_t *yuv, uint8_t *result) {
         float y = (float)yuv[0], u = (float)yuv[1], v = (float)yuv[2];
