@@ -29,11 +29,11 @@ if(MSVC)
 	set(tsumaki_PLATFORM_DEPS w32-pthreads wsock32 ws2_32)
 endif()
 
-add_compile_definitions(USE_AVX)
+add_compile_definitions(USE_AVX2)
 if (MSVC)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2")
 else()
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
 endif()
 
 set(tsumaki_SOURCES
