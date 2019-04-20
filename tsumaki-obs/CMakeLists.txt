@@ -29,6 +29,12 @@ if(MSVC)
 	set(tsumaki_PLATFORM_DEPS w32-pthreads wsock32 ws2_32)
 endif()
 
+add_compile_definitions(USE_AVX)
+if (MSVC)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX")
+else()
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+endif()
 
 set(tsumaki_SOURCES
     obs-filter.cpp

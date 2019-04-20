@@ -42,6 +42,10 @@
     yuv[2] = clamp<int>(v, 0, 255);\
 }
 
+#ifdef USE_AVX
+#include <immintrin.h>
+#endif 
+#include <iostream>
 
 
 namespace tsumaki {
@@ -130,6 +134,52 @@ namespace tsumaki {
         }
     }
 
+#ifdef USE_AVX
+#define AVX_CVT_COLOR_PRELUDE(color_matrix) \
+    __m256 w11 = _mm256_broadcast_ss(&color_matrix[0]), w12 = _mm256_broadcast_ss(&color_matrix[1]), w13 = _mm256_broadcast_ss(&color_matrix[2]); \
+    __m256 w21 = _mm256_broadcast_ss(&color_matrix[4]), w22 = _mm256_broadcast_ss(&color_matrix[5]), w23 = _mm256_broadcast_ss(&color_matrix[6]); \
+    __m256 w31 = _mm256_broadcast_ss(&color_matrix[8]), w32 = _mm256_broadcast_ss(&color_matrix[9]), w33 = _mm256_broadcast_ss(&color_matrix[10]); \
+    float constants[3] = {color_matrix[3] * 255, color_matrix[7] * 255, color_matrix[11] * 255}; \
+    __m256 min_zero = _mm256_set1_ps(0.0f), max_255 = _mm256_set1_ps(255.0f);
+
+#define AVX_CVT_BODY(Y, U, V, R, G, B) \
+    __m256 r_line = _mm256_mul_ps(Y, w11); \
+    __m256 g_line = _mm256_mul_ps(Y, w21); \
+    __m256 b_line = _mm256_mul_ps(Y, w31); \
+    __m256 rt = _mm256_mul_ps(U, w12); \
+    __m256 gt = _mm256_mul_ps(U, w22); \
+    __m256 bt = _mm256_mul_ps(U, w32); \
+    r_line = _mm256_add_ps(r_line, rt); \
+    rt = _mm256_mul_ps(V, w13); \
+    g_line = _mm256_add_ps(g_line, gt); \
+    gt = _mm256_mul_ps(V, w23); \
+    b_line = _mm256_add_ps(b_line, bt); \
+    bt = _mm256_mul_ps(V, w33); \
+    r_line = _mm256_add_ps(r_line, rt); \
+    g_line = _mm256_add_ps(g_line, gt); \
+    b_line = _mm256_add_ps(b_line, bt); \
+    rt = _mm256_broadcast_ss(&constants[0]); \
+    gt = _mm256_broadcast_ss(&constants[1]); \
+    bt = _mm256_broadcast_ss(&constants[2]); \
+    r_line = _mm256_add_ps(r_line, rt); \
+    g_line = _mm256_add_ps(g_line, gt); \
+    b_line = _mm256_add_ps(b_line, bt); \
+    r_line = _mm256_max_ps(r_line, min_zero); \
+    g_line = _mm256_max_ps(g_line, min_zero); \
+    b_line = _mm256_max_ps(b_line, min_zero); \
+    r_line = _mm256_min_ps(r_line, max_255); \
+    g_line = _mm256_min_ps(g_line, max_255); \
+    b_line = _mm256_min_ps(b_line, max_255); \
+    float R[8], G[8], B[8]; \
+    _mm256_storeu_ps(R, r_line); \
+    _mm256_storeu_ps(G, g_line); \
+    _mm256_storeu_ps(B, b_line);
+
+
+#define TO_UINT8(x) (uint8_t)(x)
+
+#endif 
+
     shared_ptr<ConvertedRGBAImage> I420FormatCvt::convert() {
         int width = convertable.get_width();
         int height = convertable.get_height();
@@ -139,8 +189,99 @@ namespace tsumaki {
 
         const uint8_t* planes[3] { convertable.get_plane(0), convertable.get_plane(1), convertable.get_plane(2) };
         const uint8_t *y_plane = planes[0];
-
         uint8_t *data = result->data;
+
+#ifdef USE_AVX
+        // Chunk
+        // ------------------------------
+        // y11 y12 y13 y14
+        // u1   u1  u2  u2 
+        // v1   v1  v1  v2 
+        // -------------------------------
+        // y21 y22 y23 y24
+        // u1   u1  u2  u2 
+        // v1   v1  v2  v2
+        // 
+        // R = w11 * Y + w12 * U + w13 * V + w14
+        // G = w21 * Y + w22 * U + w23 * V + w24
+        // B = w31 * Y + w32 * U + w33 * V + w34
+        const float *color_matrix = convertable.get_color_matrix();
+        AVX_CVT_COLOR_PRELUDE(color_matrix);
+        for (int i = 0; i < height / 2; i++) {
+            for (int j = 0; j < width / 2; j += 2) {
+                int chroma_index = u_line_size * i + j;
+                int y_base = y_line_size * 2 * i + 2 * j;
+                float u1 = planes[1][chroma_index], u2 = planes[1][chroma_index + 1];
+                float v1 = planes[2][chroma_index], v2 = planes[2][chroma_index + 1];
+
+                __m256 Y = _mm256_set_ps(
+                    (float)y_plane[y_base + y_line_size + 3],
+                    (float)y_plane[y_base + y_line_size + 2],
+                    (float)y_plane[y_base + y_line_size + 1],
+                    (float)y_plane[y_base + y_line_size],
+                    (float)y_plane[y_base + 3],
+                    (float)y_plane[y_base + 2],
+                    (float)y_plane[y_base + 1],
+                    (float)y_plane[y_base]
+                );
+                __m256 U = _mm256_set_ps(
+                    u2,
+                    u2,
+                    u1,
+                    u1,
+                    u2,
+                    u2,
+                    u1,
+                    u1
+                );
+
+                __m256 V = _mm256_set_ps(
+                    v2,
+                    v2,
+                    v1,
+                    v1,
+                    v2,
+                    v2,
+                    v1,
+                    v1
+                );
+                AVX_CVT_BODY(Y, U, V, R, G, B);
+
+                int index = 4 * width * 2 * i + 4 * 2 * j;
+                data[index + 0] = TO_UINT8(R[0]);
+                data[index + 1] = TO_UINT8(G[0]);
+                data[index + 2] = TO_UINT8(B[0]);
+
+                data[index + 4] = TO_UINT8(R[1]);
+                data[index + 5] = TO_UINT8(G[1]);
+                data[index + 6] = TO_UINT8(B[1]);
+
+                data[index + 8] = TO_UINT8(R[2]);
+                data[index + 9] = TO_UINT8(G[2]);
+                data[index + 10] = TO_UINT8(B[2]);
+
+                data[index + 12] = TO_UINT8(R[3]);
+                data[index + 13] = TO_UINT8(G[3]);
+                data[index + 14] = TO_UINT8(B[3]);
+
+                data[index + 4 * width + 0] = TO_UINT8(R[4]);
+                data[index + 4 * width + 1] = TO_UINT8(G[4]);
+                data[index + 4 * width + 2] = TO_UINT8(B[4]);
+
+                data[index + 4 * width + 4] = TO_UINT8(R[5]);
+                data[index + 4 * width + 5] = TO_UINT8(G[5]);
+                data[index + 4 * width + 6] = TO_UINT8(B[5]);
+
+                data[index + 4 * width + 8] = TO_UINT8(R[6]);
+                data[index + 4 * width + 9] = TO_UINT8(G[6]);
+                data[index + 4 * width + 10] = TO_UINT8(B[6]);
+
+                data[index + 4 * width + 12] = TO_UINT8(R[7]);
+                data[index + 4 * width + 13] = TO_UINT8(G[7]);
+                data[index + 4 * width + 14] = TO_UINT8(B[7]);
+            }
+        }
+#else
         for (int i = 0; i < height / 2; i++) {
             for (int j = 0; j < width / 2; j++) {
                 int chroma_index = u_line_size * i + j;
@@ -181,6 +322,7 @@ namespace tsumaki {
                 data[index + 4 * width + 6] = rgb[3][2];
             }
         }
+#endif
         return result;
     }
 
@@ -194,12 +336,47 @@ namespace tsumaki {
         uint8_t *plane_0 = convertable.get_modifiable_plane(0);
         uint8_t *plane_1 = convertable.get_modifiable_plane(1);
         uint8_t *plane_2 = convertable.get_modifiable_plane(2);
-
         const uint8_t *data = image.data;
+#ifdef USE_AVX
+        float inv_color_matrix[16];
+        convertable.get_inverse_color_matrix(inv_color_matrix);
+        AVX_CVT_COLOR_PRELUDE(inv_color_matrix);
+        for (int i = 0; i < height / 2; i++) {
+            for (int j = 0; j < width / 2; j += 2) {
+                int y_base = y_line_size * 2 * i + 2 * j;
+                int chroma_index = u_line_size * i + j;
+                int index = 4 * width * 2 * i + 4 * 2 * j;
+                float rgb[3][8] = {
+                    { (float)data[index], (float)data[index + 4], (float)data[index + 8], (float)data[index + 12],
+                      (float)data[index + 4 * width], (float)data[index + 4 * width + 4], (float)data[index + 4 * width + 8], (float)data[index + 4 * width + 12] },
+                    { (float)data[index + 1], (float)data[index + 5], (float)data[index + 9], (float)data[index + 13],
+                      (float)data[index + 4 * width + 1], (float)data[index + 4 * width + 5], (float)data[index + 4 * width + 9], (float)data[index + 4 * width + 13] },
+                    { (float)data[index + 2], (float)data[index + 6], (float)data[index + 10], (float)data[index + 14],
+                      (float)data[index + 4 * width + 2], (float)data[index + 4 * width + 6], (float)data[index + 4 * width + 10], (float)data[index + 4 * width + 14] }
+                };
+
+                __m256 R = _mm256_loadu_ps(rgb[0]), G = _mm256_loadu_ps(rgb[1]), B = _mm256_loadu_ps(rgb[2]);
+                AVX_CVT_BODY(R, G, B, Y, U, V);
+                plane_0[y_base] = TO_UINT8(Y[0]);
+                plane_0[y_base + 1] = TO_UINT8(Y[1]);
+                plane_0[y_base + 2] = TO_UINT8(Y[2]);
+                plane_0[y_base + 3] = TO_UINT8(Y[3]);
+                plane_0[y_base + y_line_size] = TO_UINT8(Y[4]);
+                plane_0[y_base + y_line_size + 1] = TO_UINT8(Y[5]);
+                plane_0[y_base + y_line_size + 2] = TO_UINT8(Y[6]);
+                plane_0[y_base + y_line_size + 3] = TO_UINT8(Y[7]);
+
+                plane_1[chroma_index] = TO_UINT8(((U[0] + U[1] + U[4] + U[5]) / 4.0f));
+                plane_1[chroma_index + 1] = TO_UINT8(((U[2] + U[3] + + U[6] + U[7]) / 4.0f));
+
+                plane_2[chroma_index] = TO_UINT8(((V[0] + V[1] + V[4] + V[5]) / 4.0f));
+                plane_2[chroma_index + 1] = TO_UINT8(((V[2] + V[3] + V[6] + V[7]) / 4.0f));
+            }
+        }
+#else
         for (int i = 0; i < height / 2; i++) {
             for (int j = 0; j < width / 2; j++) {
                 int chroma_index = u_line_size * i + j;
-
                 int index = 4 * width * 2 * i + 4 * 2 * j;
                 uint8_t rgb[4][3] = {
                     { data[index], data[index + 1], data[index + 2] },
@@ -225,6 +402,7 @@ namespace tsumaki {
                 plane_0[y_base + y_line_size + 1] = yuv[3][0];
             }
         }
+#endif
     }
 
     shared_ptr<ConvertedRGBAImage> NV12FormatCvt::convert() {
@@ -289,6 +467,56 @@ namespace tsumaki {
         int packed_line_size = convertable.get_line_size(0);
         const uint8_t *plane = convertable.get_plane(0);
         uint8_t *data = result->data;
+
+#ifdef USE_AVX
+        const float *color_matrix = convertable.get_color_matrix();
+        AVX_CVT_COLOR_PRELUDE(color_matrix);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width * 2; j += 16) {
+                const uint8_t *pixel_ptr = &plane[packed_line_size*i + j];
+
+                __m256 Y = _mm256_set_ps(
+                    pixel_ptr[12 + y2i],
+                    pixel_ptr[12 + y1i],
+                    pixel_ptr[8 + y2i],
+                    pixel_ptr[8 + y1i],
+                    pixel_ptr[4 + y2i],
+                    pixel_ptr[4 + y1i],
+                    pixel_ptr[y2i],
+                    pixel_ptr[y1i]
+                );
+                __m256 U = _mm256_set_ps(
+                    pixel_ptr[12 + ui],
+                    pixel_ptr[12 + ui],
+                    pixel_ptr[8 + ui],
+                    pixel_ptr[8 + ui],
+                    pixel_ptr[4 + ui],
+                    pixel_ptr[4 + ui],
+                    pixel_ptr[ui],
+                    pixel_ptr[ui]
+                );
+
+                __m256 V = _mm256_set_ps(
+                    pixel_ptr[12 + vi],
+                    pixel_ptr[12 + vi],
+                    pixel_ptr[8 + vi],
+                    pixel_ptr[8 + vi],
+                    pixel_ptr[4 + vi],
+                    pixel_ptr[4 + vi],
+                    pixel_ptr[vi],
+                    pixel_ptr[vi]
+                );
+                AVX_CVT_BODY(Y, U, V, R, G, B);
+
+                int index = width * 4 * i + 4 * (j / 2);
+                for (int k = 0; k < 8; k++) {
+                    data[index + 4 * k] = TO_UINT8(R[k]);
+                    data[index + 4 * k + 1] = TO_UINT8(G[k]);
+                    data[index + 4 * k + 2] = TO_UINT8(B[k]);
+                }
+            }
+        }
+#else
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width * 2; j += 4) {
                 const uint8_t *pixel_ptr = &plane[packed_line_size*i + j];
@@ -315,6 +543,7 @@ namespace tsumaki {
                 data[index + 7] = 255;
             }
         }
+#endif
         return result;
     }
 
@@ -330,6 +559,60 @@ namespace tsumaki {
         int packed_line_size = convertable.get_line_size(0);
         uint8_t *plane = convertable.get_modifiable_plane(0);
         const uint8_t *data = image.data;
+#ifdef USE_AVX
+        float inv_color_matrix[16];
+        convertable.get_inverse_color_matrix(inv_color_matrix);
+
+        AVX_CVT_COLOR_PRELUDE(inv_color_matrix);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j += 8) {
+                int index = width * 4 * i + 4 * j;
+
+                __m256 R = _mm256_set_ps(
+                    data[index + 28],
+                    data[index + 24],
+                    data[index + 20],
+                    data[index + 16],
+                    data[index + 12],
+                    data[index + 8],
+                    data[index + 4],
+                    data[index]
+                );
+
+                __m256 G = _mm256_set_ps(
+                    data[index + 29],
+                    data[index + 25],
+                    data[index + 21],
+                    data[index + 17],
+                    data[index + 13],
+                    data[index + 9],
+                    data[index + 5],
+                    data[index + 1]
+                );
+
+                __m256 B = _mm256_set_ps(
+                    data[index + 30],
+                    data[index + 26],
+                    data[index + 22],
+                    data[index + 18],
+                    data[index + 14],
+                    data[index + 10],
+                    data[index + 6],
+                    data[index + 2]
+                );
+
+                AVX_CVT_BODY(R, G, B, Y, U, V);
+
+                uint8_t *pixel_ptr = &plane[packed_line_size*i + j * 2];
+                for (int k = 0; k < 4; k++) {
+                    pixel_ptr[4 * k + y1i] = TO_UINT8(Y[2 * k + 0]);
+                    pixel_ptr[4 * k + y2i] = TO_UINT8(Y[2 * k + 1]);
+                    pixel_ptr[4 * k + ui] = TO_UINT8((U[2 * k + 0] + U[2 * k + 1]) / 2.0f);
+                    pixel_ptr[4 * k + vi] = TO_UINT8((V[2 * k + 0] + V[2 * k + 1]) / 2.0f);
+                }
+            }
+        }
+#else
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j += 2) {
                 int index = width * 4 * i + 4 * j;
@@ -357,6 +640,7 @@ namespace tsumaki {
                 pixel_ptr[vi] = yuv_2[2];
             }
         }
+#endif
     }
 
 
@@ -393,8 +677,49 @@ namespace tsumaki {
         int width = convertable.get_width();
         int height = convertable.get_height();
         shared_ptr<ConvertedRGBAImage> result(new ConvertedRGBAImage(width, height));
-        const float *color_matrix = convertable.get_color_matrix();
         const uint8_t* planes[3] { convertable.get_plane(0), convertable.get_plane(1), convertable.get_plane(2) };
+        const float *color_matrix = convertable.get_color_matrix();
+#if USE_AVX
+        AVX_CVT_COLOR_PRELUDE(color_matrix);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j += 8) {
+                __m256 Y = _mm256_set_ps(
+                    planes[0][width*i + j + 7],
+                    planes[0][width*i + j + 6],
+                    planes[0][width*i + j + 5],
+                    planes[0][width*i + j + 4],
+                    planes[0][width*i + j + 3],
+                    planes[0][width*i + j + 2],
+                    planes[0][width*i + j + 1],
+                    planes[0][width*i + j]
+                );
+                __m256 U = _mm256_set_ps(
+                    planes[1][width*i + j + 7],
+                    planes[1][width*i + j + 6],
+                    planes[1][width*i + j + 5],
+                    planes[1][width*i + j + 4],
+                    planes[1][width*i + j + 3],
+                    planes[1][width*i + j + 2],
+                    planes[1][width*i + j + 1],
+                    planes[1][width*i + j]
+                );
+                __m256 V = _mm256_set_ps(
+                    planes[2][width*i + j + 7],
+                    planes[2][width*i + j + 6],
+                    planes[2][width*i + j + 5],
+                    planes[2][width*i + j + 4],
+                    planes[2][width*i + j + 3],
+                    planes[2][width*i + j + 2],
+                    planes[2][width*i + j + 1],
+                    planes[2][width*i + j]
+                );
+                AVX_CVT_BODY(Y, U, V, R, G, B);
+                for (int k = 0; k < 8; k++) {
+                    result->set_pixel(i, j, R[k], G[k], B[k], 255);
+                }
+            }
+        }
+#else
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 uint8_t yuv[3] {
@@ -402,11 +727,13 @@ namespace tsumaki {
                     planes[1][width*i + j],
                     planes[2][width*i + j]
                 };
+
                 uint8_t rgb[3];
                 cvtcolor(color_matrix, yuv, rgb);
                 result->set_pixel(i, j, rgb[0], rgb[1], rgb[2], 255);
             }
         }
+#endif
         return result;
     }
 
