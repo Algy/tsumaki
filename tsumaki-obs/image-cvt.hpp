@@ -50,7 +50,6 @@ namespace tsumaki {
         ConvertedMaskImage resize_bilinear(int new_width, int new_height);
     };
 
-
     class ConvertedRGBAImage {
     public:
         uint8_t* data;
@@ -103,6 +102,52 @@ namespace tsumaki {
 
         ConvertedRGBAImage resize_bilinear(int new_width, int new_height);
     };
+
+    class ConvertedRGBImage {
+    public:
+        uint8_t* data;
+        int width;
+        int height;
+    public:
+        ConvertedRGBImage(int width, int height): width(width), height(height) {
+            data = new uint8_t[get_size()];
+        }
+
+        ConvertedRGBImage(const ConvertedRGBImage& other): width(other.width), height(other.height) {
+            data = new uint8_t[get_size()];
+            std::copy(other.data, other.data + get_size(), data);
+        }
+
+        ConvertedRGBImage(const ConvertedRGBAImage& other): width(other.width), height(other.height) {
+            data = new uint8_t[get_size()];
+            for (int i = 0; i < height; i++) {
+                for (int j = 0; j < width; j++) {
+                    for (int k = 0; k < 3; k++) {
+                        data[3 * width * i + 3 * j + k] = other.data[4 * width * i + 4 * j + k];
+                    }
+                }
+            }
+        }
+
+        ConvertedRGBImage& operator=(const ConvertedRGBImage& other) {
+            if (this == &other) {
+                return *this;
+            }
+            delete [] data;
+            width = other.width;
+            height = other.height;
+            data = new uint8_t[get_size()];
+            std::copy(other.data, other.data + get_size(), data);
+            return *this;
+        }
+
+        ~ConvertedRGBImage() {
+            delete [] data;
+        }
+
+        int get_size() const { return width * height * 3; };
+    };
+
 
     class BaseVideoConvertable {
     public:

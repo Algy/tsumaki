@@ -22,6 +22,8 @@ namespace tsumaki {
         ApiThread();
     public:
         std::shared_ptr<DetectPersonResponse> last_mask_response;
+        std::shared_ptr<ConvertedRGBAImage> last_mask_image;
+        std::shared_ptr<ConvertedMaskImage> last_mask;
     public:
         bool is_ready() { return ready; };
         bool is_impared() { return impaired; };

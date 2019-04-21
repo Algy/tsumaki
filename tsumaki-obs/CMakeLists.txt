@@ -65,12 +65,17 @@ set(tsumaki_PROTOBUF_SOURCES
     protobuf/MaskImage.pb.cc
     protobuf/RGBAImage.pb.cc)
 
+set(tsumaki_DEP_SOURCES
+    deps/fast-slic/fast-slic.cpp
+    deps/fast-slic/fast-slic-avx2.cpp
+    deps/fast-slic/simple-crf.cpp)
 
 
 add_library(tsumaki MODULE
 	${tsumaki_SOURCES}
     ${tsumaki_PLATFORM_SPECIFIC_SOURCES}
     ${tsumaki_PROTOBUF_SOURCES}
+    ${tsumaki_DEP_SOURCES}
 )
 target_link_libraries(tsumaki
 	libobs

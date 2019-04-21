@@ -1,6 +1,7 @@
 #include "tsumaki-api-thread.hpp"
 #include "platform-def.hpp"
 #include "protobuf/Heartbeat.pb.h"
+#include <algorithm>
 
 #define MAX_ATTEMPTS 10
 
@@ -91,25 +92,14 @@ namespace tsumaki {
 
                 if (result.success) {
                     // auto resp = result.get_response<DetectPersonResponse>();
-                    last_mask_response = std::dynamic_pointer_cast<DetectPersonResponse>(result.message);
-                    /*
-
-                    int width = resp.mask().width();
-                    int height = resp.mask().height();
-                    const std::string& data = resp.mask().data();
-                    int size = width * height;
-                    float density = 0;
-                    auto rgba = frame->get_rgba_image();
-                    for (int i = 0; i < height; i++) {
-                        for (int j = 0; j < width; j++) {
-                            density += (float)((unsigned char)data[i * width +j] >= 128) / (float)size;
-                            if ((unsigned int)data[i * width +j] < 128) {
-                                rgba->data[i * (width * 4) + j * 4 + 1] = 255;
-                            }
-                        }
-                    }
-                    */
-                    //frame = std::unique_ptr<Frame>(new RGBAFrame(rgba));
+                    auto resp = std::dynamic_pointer_cast<DetectPersonResponse>(result.message);
+                    last_mask_image = rgba;
+                    int mask_width = resp->mask().width();
+                    int mask_height = resp->mask().height();
+                    const std::string& data = resp->mask().data();
+                    last_mask = std::shared_ptr<ConvertedMaskImage>(new ConvertedMaskImage(mask_width, mask_height));
+                    std::copy(data.c_str(), data.c_str() + last_mask->get_size(), last_mask->data);
+                    last_mask_response = resp;
                 } else {
                     error << result.error_message << error.endl;
                 }

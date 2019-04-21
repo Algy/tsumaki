@@ -1,0 +1,3 @@
+[submodule "tsumaki-obs/deps/fast-slic"]
+	path = tsumaki-obs/deps/fast-slic
+	url = https://github.com/Algy/fast-slic
