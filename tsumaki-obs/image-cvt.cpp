@@ -132,7 +132,7 @@ namespace tsumaki {
 
                 int16_t lt_vec_arr[16], rt_vec_arr[16], lb_vec_arr[16], rb_vec_arr[16];
 
-                for (int k =0; k < 16; k++) {
+                for (int k = 0; k < 16; k++) {
                     lt_vec_arr[k] = orig_data[width * y1 + x1[k]];
                     rt_vec_arr[k] = orig_data[width * y1 + x2[k]];
                     lb_vec_arr[k] = orig_data[width * y2 + x1[k]];

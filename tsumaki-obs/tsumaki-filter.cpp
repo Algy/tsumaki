@@ -2,6 +2,7 @@
 #include <util/circlebuf.h>
 #include <fstream>
 #include <memory>
+#include <algorithm>
 #include "tsumaki-filter.hpp"
 #include "tsumaki-api-thread.hpp"
 #include "ipc-error.hpp"
@@ -43,35 +44,33 @@ namespace tsumaki {
     unique_ptr<Frame> TsumakiFilter::frame_update(unique_ptr<Frame> frame) {
         int width = frame->get_width();
         int height = frame->get_height();
-        // api_thread->put_frame(std::move(frame));
-        std::shared_ptr<ConvertedRGBAImage> copied_img { new ConvertedRGBAImage(*frame->get_rgba_image()) };
-        api_thread->put_frame(std::unique_ptr<Frame>(new RGBAFrame(copied_img)));
 
-        if (api_thread->last_mask_response != nullptr) {
-            auto acquired_resp = api_thread->last_mask_response;
-            if (acquired_resp != nullptr) {
-                auto &mask = acquired_resp->mask();
-                int mask_width = mask.width();
-                int mask_height = mask.height();
-                const std::string& data = mask.data();
+        std::shared_ptr<ConvertedRGBAImage> img { new ConvertedRGBAImage(frame->get_rgba_image()->resize_bilinear(256, 144)) };
+        api_thread->put_frame(std::move(unique_ptr<Frame> { new RGBAFrame(img) }));
 
-                if (mask_width == width && mask_height == height) {
-                    auto frame_rgba = frame->get_rgba_image();
-                    for (int i = 0; i < height; i++) {
-                        for (int j = 0; j < width; j++) {
-                            if ((uint8_t)data[i * width + j] < 128) {
-                                uint8_t *base_ptr = &frame_rgba->data[i * (width * 4) + j * 4];
-                                base_ptr[0] = 0;
-                                base_ptr[1] = 255;
-                                base_ptr[2] = 0;
-                            }
-                        }
+        auto acquired_resp = api_thread->last_mask_response;
+        if (acquired_resp != nullptr) {
+            auto frame_rgba = frame->get_rgba_image();
+            auto &mask = acquired_resp->mask();
+            int mask_width = mask.width();
+            int mask_height = mask.height();
+            ConvertedMaskImage mask_image(mask_width, mask_height);
+            const std::string& data = mask.data();
+            std::copy(data.c_str(), data.c_str() + mask_image.get_size(), mask_image.data);
+
+            ConvertedMaskImage mask_image_resized = mask_image.resize_bilinear(width, height);
+            for (int i = 0; i < height; i++) {
+                for (int j = 0; j < width; j++) {
+                    if (mask_image_resized.data[i * width + j] < 128) {
+                        uint8_t *base_ptr = &frame_rgba->data[i * (width * 4) + j * 4];
+                        base_ptr[0] = 0;
+                        base_ptr[1] = 255 - mask_image_resized.data[i * width + j];
+                        base_ptr[2] = 0;
                     }
-                    return std::unique_ptr<Frame>(new RGBAFrame(frame_rgba));
                 }
             }
+            return std::unique_ptr<Frame>(new RGBAFrame(frame_rgba));
         }
         return frame;
     }
 };
-
