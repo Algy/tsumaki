@@ -2,6 +2,15 @@
 #include "tsumaki-math.hpp"
 #include <algorithm>
 
+#if defined(_MSC_VER)
+#define ALIGNED_(x) __declspec(align(x))
+#else
+#if defined(__GNUC__)
+#define ALIGNED_(x) __attribute__ ((aligned(x)))
+#endif
+#endif
+
+
 #define FAST_CVT_601(yuv, rgb) { \
     int dy = (int)yuv[0] - 16, du = (int)yuv[1] - 128, dv = (int)yuv[2] - 128; \
     int r = (298 * dy + 409 * dv + 128) >> 8; \
@@ -380,7 +389,7 @@ namespace tsumaki {
     float constants[3] = {color_matrix[3] * 255, color_matrix[7] * 255, color_matrix[11] * 255}; \
     __m256 min_zero = _mm256_set1_ps(0.0f), max_255 = _mm256_set1_ps(255.0f);
 
-#define AVX_CVT_BODY(Y, U, V, R, G, B) \
+#define AVX_CVT_BODY_WO(Y, U, V, R, G, B) \
     __m256 r_line = _mm256_mul_ps(Y, w11); \
     __m256 g_line = _mm256_mul_ps(Y, w21); \
     __m256 b_line = _mm256_mul_ps(Y, w31); \
@@ -402,6 +411,9 @@ namespace tsumaki {
     r_line = _mm256_add_ps(r_line, rt); \
     g_line = _mm256_add_ps(g_line, gt); \
     b_line = _mm256_add_ps(b_line, bt); \
+
+#define AVX_CVT_BODY(Y, U, V, R, G, B) \
+    AVX_CVT_BODY_WO(Y, U, V, R, G, B) \
     r_line = _mm256_max_ps(r_line, min_zero); \
     g_line = _mm256_max_ps(g_line, min_zero); \
     b_line = _mm256_max_ps(b_line, min_zero); \
@@ -707,45 +719,37 @@ namespace tsumaki {
         uint8_t *data = result->data;
 
 #ifdef USE_AVX2
+        __m256i gather_yuv_mask = _mm256_set_epi32(
+            vi + 4, vi, ui + 4, ui,
+            y2i + 4, y1i + 4, y2i, y1i
+        );
+
+        __m256i duplicate_uv = _mm256_set_epi32(
+            7, 7, 6, 6,
+            5, 5, 4, 4
+        );
+
         const float *color_matrix = convertable.get_color_matrix();
         AVX_CVT_COLOR_PRELUDE(color_matrix);
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width * 2; j += 16) {
                 const uint8_t *pixel_ptr = &plane[packed_line_size*i + j];
+                __m128i packed_line = _mm_loadu_si128((__m128i *)pixel_ptr);
+                __m256i packed_16u = _mm256_cvtepu8_epi16(packed_line);
 
-                __m256 Y = _mm256_set_ps(
-                    pixel_ptr[12 + y2i],
-                    pixel_ptr[12 + y1i],
-                    pixel_ptr[8 + y2i],
-                    pixel_ptr[8 + y1i],
-                    pixel_ptr[4 + y2i],
-                    pixel_ptr[4 + y1i],
-                    pixel_ptr[y2i],
-                    pixel_ptr[y1i]
-                );
-                __m256 U = _mm256_set_ps(
-                    pixel_ptr[12 + ui],
-                    pixel_ptr[12 + ui],
-                    pixel_ptr[8 + ui],
-                    pixel_ptr[8 + ui],
-                    pixel_ptr[4 + ui],
-                    pixel_ptr[4 + ui],
-                    pixel_ptr[ui],
-                    pixel_ptr[ui]
-                );
+                __m256 lo = _mm256_cvtepi32_ps(_mm256_cvtepu16_epi32(_mm256_extracti128_si256(packed_16u, 0)));
+                __m256 hi = _mm256_cvtepi32_ps(_mm256_cvtepu16_epi32(_mm256_extracti128_si256(packed_16u, 1)));
 
-                __m256 V = _mm256_set_ps(
-                    pixel_ptr[12 + vi],
-                    pixel_ptr[12 + vi],
-                    pixel_ptr[8 + vi],
-                    pixel_ptr[8 + vi],
-                    pixel_ptr[4 + vi],
-                    pixel_ptr[4 + vi],
-                    pixel_ptr[vi],
-                    pixel_ptr[vi]
-                );
+                __m256 yyyyuuvv_lo = _mm256_permutevar8x32_ps(lo, gather_yuv_mask);
+                __m256 yyyyuuvv_hi = _mm256_permutevar8x32_ps(hi, gather_yuv_mask);
+                __m256 uuuuvvvv_lo = _mm256_permutevar8x32_ps(yyyyuuvv_lo, duplicate_uv);
+                __m256 uuuuvvvv_hi = _mm256_permutevar8x32_ps(yyyyuuvv_hi, duplicate_uv);
+
+                __m256 Y = _mm256_insertf128_ps(yyyyuuvv_lo, _mm256_extractf128_ps(yyyyuuvv_hi, 0), 1);
+                __m256 U = _mm256_insertf128_ps(uuuuvvvv_lo, _mm256_extractf128_ps(uuuuvvvv_hi, 0), 1);
+                __m256 V = _mm256_insertf128_ps(uuuuvvvv_hi, _mm256_extractf128_ps(uuuuvvvv_lo, 1), 0);
+
                 AVX_CVT_BODY(Y, U, V, R, G, B);
-
                 int index = width * 4 * i + 4 * (j / 2);
                 for (int k = 0; k < 8; k++) {
                     data[index + 4 * k] = TO_UINT8(R[k]);
