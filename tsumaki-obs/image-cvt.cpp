@@ -151,7 +151,6 @@ namespace tsumaki {
         const uint8_t* orig_data = data;
         uint8_t *new_data = result.data;
 
-        __m256i hi_word_dropper = _mm256_set1_epi16(0x00FF);
         __m256i duplicate_mask = _mm256_set_epi32(
             3, 3, 2, 2,
             1, 1, 0, 0
@@ -168,38 +167,34 @@ namespace tsumaki {
                 __m256i interpx_vec = _mm256_permutevar8x32_epi32(_mm256_castsi128_si256(dup_m), duplicate_mask);
 
 
-                __m256i lt_vec = _mm256_cvtepi8_epi16(_mm_set_epi32(
+                __m256i lt_vec = _mm256_cvtepu8_epi16(_mm_set_epi32(
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x1[3]],
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x1[2]],
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x1[1]],
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x1[0]]
                     )
                 );
-                __m256i rt_vec = _mm256_cvtepi8_epi16(_mm_set_epi32(
+                __m256i rt_vec = _mm256_cvtepu8_epi16(_mm_set_epi32(
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x2[3]],
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x2[2]],
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x2[1]],
                         *(int32_t*)&orig_data[4 * width * y1 + 4 * x2[0]]
                     )
                 );
-                __m256i lb_vec = _mm256_cvtepi8_epi16(_mm_set_epi32(
+                __m256i lb_vec = _mm256_cvtepu8_epi16(_mm_set_epi32(
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x1[3]],
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x1[2]],
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x1[1]],
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x1[0]]
                     )
                 );
-                __m256i rb_vec = _mm256_cvtepi8_epi16(_mm_set_epi32(
+                __m256i rb_vec = _mm256_cvtepu8_epi16(_mm_set_epi32(
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x2[3]],
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x2[2]],
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x2[1]],
                         *(int32_t*)&orig_data[4 * width * y2 + 4 * x2[0]]
                     )
                 );
-                lt_vec = _mm256_and_si256(lt_vec, hi_word_dropper);
-                rt_vec = _mm256_and_si256(rt_vec, hi_word_dropper);
-                lb_vec = _mm256_and_si256(lb_vec, hi_word_dropper);
-                rb_vec = _mm256_and_si256(rb_vec, hi_word_dropper);
                 BILINEAR_BODY(lt_vec, rt_vec, lb_vec, rb_vec);
                 _mm_storeu_si128((__m128i*)&new_data[4 * new_width * i + 4 * j], pixs_vec);
             }
